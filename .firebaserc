@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "demo-tahmin-ligi"
+    "default": "demo-tahmin-ligi",
+    "production": "tahmin-ligi-sl2026"
   }
 }

@@ -139,19 +139,19 @@ dosyasındaki değişiklikleri otomatik hot-reload eder.
   `tsc --noEmit` temiz.
 - **Hiçbir zaman gerçek API-Football verisine karşı çalıştırılmadı** — sadece yerel seed script'i
   ve elle yazılmış simülasyon script'leriyle test edildi (detay: `worker/AGENTS.md`).
-- **Proje hâlâ hiç git commit edilmedi** (bkz. aşağı, Xcode lisansı blocker'ı).
+- **Xcode lisansı çözüldü, ilk git commit atıldı** (`48e6ca7`, 108 dosya). Working tree temiz.
+  `.env.local` ve service account JSON'ları `.gitignore` ile korunuyor, staged dosyalar commit
+  öncesi tek tek kontrol edildi (hassas dosya yok).
 
 ---
 
 ## 7. Yapılacaklar (proje geneli, öncelik sırasıyla)
 
-1. **Xcode lisansı (BLOCKER — git hiç çalışmıyor)**: `sudo xcodebuild -license` — bu kabul
-   edilmeden `git init`/`commit` dahil hiçbir git komutu çalışmıyor.
-2. **Gerçek Firebase projesi**: console'da oluştur → Google Auth aç → Firestore oluştur (Spark) →
+1. **Gerçek Firebase projesi**: console'da oluştur → Google Auth aç → Firestore oluştur (Spark) →
    web config'i `.env.local`'a yaz (`.env.example`'a bak) → service account JSON indir (worker
    için, repoya ASLA commitleme). Detaylı adımlar `README.md`'de.
-3. **API-Football + GitHub kurulumu**: detay için `worker/AGENTS.md`.
-4. **Deploy**: `npm run build && firebase deploy --only hosting,firestore` → Firebase Console →
+2. **API-Football + GitHub kurulumu**: detay için `worker/AGENTS.md`.
+3. **Deploy**: `npm run build && firebase deploy --only hosting,firestore` → Firebase Console →
    Authentication → Authorized domains'e prod alan adını ekle.
 
 ---

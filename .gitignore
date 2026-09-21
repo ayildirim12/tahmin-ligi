@@ -29,6 +29,7 @@ dist-ssr
 .env.*.local
 worker/.env
 worker/service-account.json
+worker/secrets/
 
 # Firebase local state
 .firebase/
