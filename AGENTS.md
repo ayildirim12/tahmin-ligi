@@ -158,13 +158,14 @@ dosyasındaki değişiklikleri otomatik hot-reload eder.
   yeniden yazıldı. Gerçek API anahtarıyla test edilip 2 gerçek hata bulunup düzeltildi
   (standings alan adları, Node 20→22 gereksinimi) — detay `worker/AGENTS.md §4/§6`.
 - **Süper Lig gerçek lig ID'si**: `173537` (isim tam olarak `"Süper Lig"`, Türkçe ü ile).
-- **GitHub Actions workflow'u aktif** — tüm secrets/variables ayarlı (`HIGHLIGHTLY_API_KEY`,
-  `FIREBASE_SERVICE_ACCOUNT_JSON`, `SUPERLIG_LEAGUE_ID=173537`, `SUPERLIG_SEASON=2026`),
-  `gh workflow enable` yapıldı. İlk `workflow_dispatch` denemesi Node 20 hatasıyla BAŞARISIZ
-  oldu, düzeltilip tekrar tetiklendi — sonucu için `gh run list --repo ayildirim12/tahmin-ligi`
-  ile en son çalıştırmayı kontrol edin. Yerel testlerde (gerçek Firestore'a karşı, emulator
-  değil) `syncTeams`/`syncFixtures`/`syncStandings`/`pollLiveScores` hepsi başarıyla çalıştı:
-  `teams` (18), `matches` (153), `standings/superlig` (18 satır) prod Firestore'da mevcut.
+- **GitHub Actions workflow'u AKTİF VE PRODUCTION'DA DOĞRULANDI ÇALIŞIYOR.** Tüm secrets/
+  variables ayarlı (`HIGHLIGHTLY_API_KEY`, `FIREBASE_SERVICE_ACCOUNT_JSON`,
+  `SUPERLIG_LEAGUE_ID=173537`, `SUPERLIG_SEASON=2026`). İlk `workflow_dispatch` denemesi Node 20
+  hatasıyla başarısız oldu (§ yukarı), düzeltilip tekrar tetiklendi — **ikinci deneme tamamen
+  başarılı** (`gh run view 35656525688 --repo ayildirim12/tahmin-ligi`, ~19sn, "no live/imminent
+  match — quiet run" ile temiz çıktı). Artık normal 5 dakikalık cron'a göre kendiliğinden
+  çalışıyor. `teams` (18), `matches` (153), `standings/superlig` (18 satır) prod Firestore'da
+  gerçek veriyle dolu.
 
 ---
 
