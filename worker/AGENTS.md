@@ -110,13 +110,24 @@ kendi canlı verisini "dakikada bir" yenilediğini belirtiyor — bu, ~1dk hedef
 
 ---
 
-## 4. Highlightly — doğrulanan noktalar ve hâlâ AÇIK olanlar
+## 4. Highlightly — DOĞRULANDI (gerçek anahtarla test edildi)
 
-Bu entegrasyon **hiçbir zaman gerçek bir API anahtarıyla test edilmedi**. İlk yazımda
-highlightly.net'in genel dokümantasyon sayfasındaki (`/football-api/documentation/`) ÖRNEK
-response'lara göre yazıldı; sonra kullanıcı isteğiyle o sayfa TEKRAR, bu sefer "her şeyi
-kelimesi kelimesine alıntıla" diye özel olarak taranıp birkaç gerçek hata bulunup düzeltildi
-(aşağıda işaretli). Yine de **gerçek bir istekle hiç doğrulanmadı** — bu hâlâ geçerli.
+Bu entegrasyon önce dokümantasyon örneklerine göre yazıldı, sonra dokümantasyon sayfası "her
+şeyi kelimesi kelimesine alıntıla" diye özel taranıp birkaç hata bulundu, **ve nihayet gerçek
+bir Highlightly API anahtarıyla `worker/scratch/` altında bir dizi test script'i çalıştırılarak
+her endpoint'in gerçek response'u doğrulandı** (fikstürler, standings, canlı skor sorgusu,
+tam `sync.ts` orkestratörü — hepsi gerçek Firestore'a (`tahmin-ligi-sl2026`) karşı çalıştırıldı
+ve sonuçlar gözle kontrol edildi). Aşağıdaki liste artık **doğrulanmış gerçek durumu** yansıtıyor.
+
+**Süper Lig gerçek kimlikleri (artık sabit, değişmeyecek):**
+- Lig ID: **`173537`** (isim tam olarak `"Süper Lig"` — Türkçe ü ile; `"Super Lig"` aramasında
+  SIFIR sonuç döner, bu yüzden `findLeagueId` çağrılarında dikkatli olun)
+- 2026 sezonu şu an **153 maç** listeliyor (18 takımın tek devreliği, 17 hafta × 9 maç) — bu,
+  sezonun TAMAMI değil, ikinci devre muhtemelen ilerleyen zamanda API'ye eklenecek; worker'ın
+  günlük fikstür senkronu (`lastFixtureSyncAt` >24 saat) bunu otomatik yakalayacak, ekstra bir
+  işlem gerekmiyor.
+- İlk test çalıştırıldığında (21 Eylül 2026) `currentGameweek` doğru şekilde **7** olarak
+  hesaplandı (sezon 14 Ağustos 2026'da başlamış).
 
 **Dokümantasyondan KELİMESİ KELİMESİNE doğrulanmış, artık güvenilir:**
 
@@ -143,35 +154,33 @@ kelimesi kelimesine alıntıla" diye özel olarak taranıp birkaç gerçek hata 
 - **`date` formatı**: `YYYY-MM-DD` doğrulandı — `live.ts`'teki `turkeyTodayYmd()` zaten bu
   formatı üretiyor, değişiklik gerekmedi.
 
-**Hâlâ DOĞRULANMAMIŞ, gerçek anahtarla test edilmeli:**
+**Gerçek testte bulunup düzeltilen 2 ek hata** (dokümantasyon taramasında yakalanamamıştı):
 
-1. **Lig ID**: `config.ts`'teki `SUPERLIG_LEAGUE_ID` varsayılanı **`0` (kasıtlı geçersiz)**.
-   ```bash
-   cd worker
-   HIGHLIGHTLY_API_KEY=<gerçek-anahtar> npx tsx -e "
-   import('./src/highlightlyApi.ts').then(m => m.findLeagueId('Super Lig','TR')).then(r => console.log(JSON.stringify(r, null, 2)))
-   "
-   ```
-2. **`state.score.current` formatı**: `"H - A"` (örn. `"3 - 1"`) sadece dokümantasyon ÖRNEĞİNDEN
-   görüldü, farklı maçlarda gerçekten hep bu formatta mı geliyor doğrulanmadı. `parseScore()`
-   regex'i tire dışında bir ayraç (`:` gibi) gelirse BOZULUR.
-3. **`homeTeam`/`awayTeam`/`league`/`round` alan adlarının GERÇEK response'ta da böyle olduğu**
-   — dokümantasyondaki tek örnek match objesinden çıkarıldı (ve o örnekte home/away takım id'leri
-   birbiriyle aynıydı, muhtemelen sahte/placeholder veri — bu yüzden bu alanlar konusunda hâlâ
-   temkinli olun).
-4. **`/standings` şekli**: `groups[0].standings` yapısı ve `form` alanının varlığı hiç
-   doğrulanmadı (dokümantasyonun standings bölümü matches kadar detaylı taranmadı) — yoksa
-   `standings.ts` zaten zarifçe boş forma düşüyor.
+- **`/standings` satır şekli TAMAMEN farklıydı.** Varsayılan `total.played/win/draw/lose/
+  goals.for/goals.against` yerine gerçek alan adları: **`total.games/wins/draws/loses/
+  scoredGoals/receivedGoals`** (goals `for`/`against` diye ayrı bir obje DEĞİL, flat alanlar).
+  `HlStandingRow` ve `standings.ts`'teki `syncStandings()` düzeltildi. `form` alanı gerçekten
+  YOK (doğrulandı) — zaten zarifçe boş diziye düşüyordu.
+- **GitHub Actions workflow'u Node 20 kullanıyordu ama `@google-cloud/firestore` (firebase-admin
+  bağımlılığı) Node ≥22 istiyor.** Node 20'de npm bu opsiyonel bağımlılığı SESSİZCE atlıyor,
+  çalışma zamanında `Cannot find module '@google-cloud/firestore'` hatasına yol açıyor — yerelde
+  hiç yakalanmadı çünkü yerel Node zaten 22+ idi. İlk gerçek `workflow_dispatch` çalıştırmasında
+  bulundu. `.github/workflows/sync.yml`'de `node-version: 22`'ye çıkarıldı, `worker/package.json`'a
+  `"engines": {"node": ">=22"}` eklendi.
 
-**Test yöntemi**: `worker/scratch/` altına (git'e girmez) `console.log(JSON.stringify(...))`
-içeren geçici bir script yazıp gerçek anahtarla çalıştırmak, her endpoint'in TAM response
-şeklini görmenin en hızlı yolu — önceki oturumda Firestore Admin SDK bağlantısını aynı şekilde
-(`worker/scratch/testRealConnection.ts` örneği) doğrulamıştık.
+**Doğrulanmış, sorunsuz çıkanlar**: auth header, `/matches` param adları, `/teams`'te lig
+filtresi olmaması (fikstürden türetme kararı doğru), sayfalama (`totalCount` dahil), `date`
+formatı, `state.description`'ın 19 değerlik tam listesi, `state.score.current` formatı
+(`"3 - 1"` doğrulandı), `homeTeam`/`awayTeam`/`league`/`round` alan adları (gerçek veride
+`type` alanı YOK — tipte opsiyonel yapıldı), `/leagues?countryCode=TR` ile lig keşfi.
 
-İlk gerçek `sync.ts` çalıştırması GitHub Actions'ta `workflow_dispatch` ile tetiklenmeden önce,
-mümkünse önce yerelde (`GOOGLE_APPLICATION_CREDENTIALS` + gerçek `HIGHLIGHTLY_API_KEY` ile, emulator
-KULLANMADAN, gerçek Firestore'a karşı ama dikkatli) tek bir `syncFixtures()`/`syncTeams()`
-çağrısı yapıp Firestore konsolundan yazılan veriyi gözle kontrol etmek çok daha güvenli.
+**Test yöntemi (ileride benzer bir sorun çıkarsa aynısını uygula)**: `worker/scratch/` altına
+(git'e girmez) `console.log(JSON.stringify(...))` içeren geçici bir script yazıp gerçek anahtarla
+çalıştırmak, her endpoint'in TAM response şeklini görmenin en hızlı yolu. Kod fonksiyonlarını
+gerçek Firestore'a karşı (emulator KULLANMADAN, `GOOGLE_APPLICATION_CREDENTIALS` + gerçek
+`HIGHLIGHTLY_API_KEY` ile) çalıştırıp Firestore konsolundan/okuyarak doğrulamak, dokümantasyon
+taramasının YAKALAYAMADIĞI hataları (standings şekli gibi) ortaya çıkardı — sadece dokümantasyon
+okumak yeterli değil, gerçek çalıştırma şart.
 
 ---
 
@@ -188,30 +197,31 @@ değişikliği gerekmez — sadece `src/shared/scoring.ts` değişir, worker oto
 
 ## 6. Yapılacaklar (worker'a özel)
 
-**Tamamlanan:** GitHub reposu oluşturuldu (`ayildirim12/tahmin-ligi`, **public**), kod push
-edildi. Secret `FIREBASE_SERVICE_ACCOUNT_JSON` ve variable `SUPERLIG_SEASON=2026` zaten ayarlı
-(`gh secret list` / `gh variable list --repo ayildirim12/tahmin-ligi` ile doğrulanabilir). Worker
-servis hesabının (`tahmin-ligi-worker@tahmin-ligi-sl2026.iam.gserviceaccount.com`,
-`roles/datastore.user`) gerçek Firestore'a yazabildiği doğrulandı. **Workflow şu an bilinçli
-olarak `gh workflow disable` ile durduruldu** (aşağıdaki 1-2 tamamlanmadan aktif olursa her 5
-dakikada bir başarısız olup e-posta spam'i yapar).
+**Tamamlanan (worker tarafı artık production'da tam çalışır durumda):**
+- GitHub reposu oluşturuldu (`ayildirim12/tahmin-ligi`, **public**), kod push edildi.
+- Secrets: `FIREBASE_SERVICE_ACCOUNT_JSON`, `HIGHLIGHTLY_API_KEY` — ikisi de ayarlı.
+- Variables: `SUPERLIG_SEASON=2026`, `SUPERLIG_LEAGUE_ID=173537` — ikisi de ayarlı ve doğrulandı.
+- Worker servis hesabı (`tahmin-ligi-worker@tahmin-ligi-sl2026.iam.gserviceaccount.com`,
+  `roles/datastore.user`) gerçek Firestore'a yazabildiği doğrulandı.
+- `syncTeams()`, `syncFixtures()`, `syncStandings()`, `pollLiveScores()` ve tam `sync.ts`
+  orkestratörünün TAMAMI gerçek Highlightly API'sine ve gerçek Firestore'a (`tahmin-ligi-sl2026`)
+  karşı çalıştırılıp doğrulandı (bkz. §4) — `teams` (18), `matches` (153), `standings/superlig`
+  (18 satır) koleksiyonları gerçek veriyle dolu.
+- Node 20→22 bug'ı bulunup düzeltildi (§4), GitHub Actions workflow'u `workflow_dispatch` ile
+  gerçekten tetiklenip izlendi.
+- Workflow **etkin** (`gh workflow enable` yapıldı) — artık normal 5 dakikalık cron'a göre
+  otomatik çalışıyor.
 
-1. **Highlightly hesabı**: highlightly.net → ücretsiz kayıt (kredi kartı gerekmiyor) → anahtar al →
-   `gh secret set HIGHLIGHTLY_API_KEY --repo ayildirim12/tahmin-ligi` (değeri stdin'den okur,
-   terminale yapıştırıp Ctrl+D, ya da `echo "<anahtar>" | gh secret set ...`).
-2. **§4'teki TÜM doğrulama maddelerini gerçek anahtarla test et** — bu, sadece lig ID'sini bulmaktan
-   ibaret DEĞİL, response şekillerinin tamamının kontrolü gerekiyor.
-3. **Lig ID'yi ayarla**: `gh variable set SUPERLIG_LEAGUE_ID --repo ayildirim12/tahmin-ligi --body <ID>`.
-4. **Workflow'u yeniden etkinleştir**: `gh workflow enable "Sync Süper Lig data" --repo
-   ayildirim12/tahmin-ligi`.
-5. **İlk gerçek çalıştırma**: `gh workflow run "Sync Süper Lig data" --repo ayildirim12/tahmin-ligi`
-   ile elle tetikle, `gh run watch --repo ayildirim12/tahmin-ligi` ile izle, Firestore konsolundan
-   `matches`/`teams`/`standings` dokümanlarının doğru yazıldığını doğrula.
-6. **(Opsiyonel/backlog)** "Wins" tie-break'i gerçek "haftalık kazanma" semantiğine çevirmek
+**Kalan tek şey:**
+1. **(Opsiyonel/backlog)** "Wins" tie-break'i gerçek "haftalık kazanma" semantiğine çevirmek
    istenirse: `finalize.ts`'e bir gameweek-sonu pass'i eklenmeli — o haftanın TÜM maçları
    `pointsFinalized` olduğunda, topluluk üyelerinin o haftaki toplam puanını karşılaştırıp en
    yükseği alan(lar)a `winsCount++` yapmalı (şu anki gibi her maç sonrası tek satır increment
    yeterli değil, haftanın tamamının bitmesini beklemek gerekir).
+2. **(Opsiyonel)** İlk gerçek CANLI maç geldiğinde (`state.description` "First half" vb. dönen bir
+   maç), `pollLiveScores()`'un ve `LeaderboardMatrix`'in ucuca gerçekten doğru çalıştığını bir kez
+   daha gözle izlemek iyi olur — şu ana kadarki testler sadece "Not started"/"Finished" durumlarıyla
+   yapıldı (test sırasında canlı maç yoktu), LIVE/HT geçişleri prod'da hiç görülmedi.
 
 ---
 

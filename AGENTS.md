@@ -151,18 +151,20 @@ dosyasındaki değişiklikleri otomatik hot-reload eder.
   karşı Admin SDK write+read testi yapıldı, başarılı.
 - **Google Sign-In auth provider'ı AÇILDI VE DOĞRULANDI** (Identity Toolkit API'den
   `"enabled": true` kontrol edildi).
-- **Canlı veri sağlayıcısı API-Football'dan Highlightly'e değiştirildi** (kullanıcının "başka
-  bir API var mı" sorusu üzerine araştırılıp seçildi — detay ve gerekçe: `worker/AGENTS.md`
-  başlığı). `worker/src/apiFootball.ts` → `worker/src/highlightlyApi.ts`, `statusMap.ts`
-  Highlightly'nin metin tabanlı durumlarına göre yeniden yazıldı. **Hiçbir response şekli gerçek
-  API'ye karşı doğrulanmadı** (bkz. `worker/AGENTS.md §4`) — dokümantasyon örneklerinden çıkarıldı.
-- **GitHub Actions workflow'u BİLİNÇLİ OLARAK DEVRE DIŞI** (`gh workflow disable`) — çünkü
-  `HIGHLIGHTLY_API_KEY` secret'ı ve `SUPERLIG_LEAGUE_ID` variable'ı henüz yok, aktifken her 5
-  dakikada bir başarısız olup e-posta spam'i yapardı. `SUPERLIG_SEASON=2026` variable'ı ve
-  `FIREBASE_SERVICE_ACCOUNT_JSON` secret'ı zaten ayarlı. Highlightly anahtarı gelince:
-  `gh secret set HIGHLIGHTLY_API_KEY --repo ayildirim12/tahmin-ligi`,
-  `gh variable set SUPERLIG_LEAGUE_ID --repo ayildirim12/tahmin-ligi --body <ID>`, sonra
-  `gh workflow enable "Sync Süper Lig data" --repo ayildirim12/tahmin-ligi`.
+- **Canlı veri sağlayıcısı API-Football'dan Highlightly'e değiştirildi VE PRODUCTION'DA
+  DOĞRULANDI** (kullanıcının "başka bir API var mı" sorusu üzerine araştırılıp seçildi — detay
+  ve gerekçe: `worker/AGENTS.md` başlığı). `worker/src/apiFootball.ts` →
+  `worker/src/highlightlyApi.ts`, `statusMap.ts` Highlightly'nin metin tabanlı durumlarına göre
+  yeniden yazıldı. Gerçek API anahtarıyla test edilip 2 gerçek hata bulunup düzeltildi
+  (standings alan adları, Node 20→22 gereksinimi) — detay `worker/AGENTS.md §4/§6`.
+- **Süper Lig gerçek lig ID'si**: `173537` (isim tam olarak `"Süper Lig"`, Türkçe ü ile).
+- **GitHub Actions workflow'u aktif** — tüm secrets/variables ayarlı (`HIGHLIGHTLY_API_KEY`,
+  `FIREBASE_SERVICE_ACCOUNT_JSON`, `SUPERLIG_LEAGUE_ID=173537`, `SUPERLIG_SEASON=2026`),
+  `gh workflow enable` yapıldı. İlk `workflow_dispatch` denemesi Node 20 hatasıyla BAŞARISIZ
+  oldu, düzeltilip tekrar tetiklendi — sonucu için `gh run list --repo ayildirim12/tahmin-ligi`
+  ile en son çalıştırmayı kontrol edin. Yerel testlerde (gerçek Firestore'a karşı, emulator
+  değil) `syncTeams`/`syncFixtures`/`syncStandings`/`pollLiveScores` hepsi başarıyla çalıştı:
+  `teams` (18), `matches` (153), `standings/superlig` (18 satır) prod Firestore'da mevcut.
 
 ---
 

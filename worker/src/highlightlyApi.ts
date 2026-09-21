@@ -52,7 +52,8 @@ export interface HlTeam {
   id: number
   name: string
   logo: string
-  type: string
+  // Confirmed ABSENT on match objects' homeTeam/awayTeam (worker/AGENTS.md §4) — optional here.
+  type?: string
 }
 
 export interface HlMatch {
@@ -84,13 +85,15 @@ export function fetchMatchesForDate(dateYmd: string): Promise<HlMatch[]> {
   return fetchAllPages<HlMatch>('/matches', { leagueId: config.leagueId, date: dateYmd })
 }
 
+// Confirmed against a real response (worker/AGENTS.md §4) — note the flat scoredGoals/
+// receivedGoals (not nested under a "goals" object like /matches' team objects) and "games"/
+// "wins"/"draws"/"loses" (plural, not "played"/"win"/"draw"/"lose" as first guessed).
 export interface HlStandingRow {
   position: number
   points: number
   team: { id: number; name: string }
-  total: { played: number; win: number; draw: number; lose: number; goals: { for: number; against: number } }
-  // Form is not confirmed present on this endpoint — derive from recent fixtures if absent
-  // (see worker/AGENTS.md §4 verification note).
+  total: { games: number; wins: number; draws: number; loses: number; scoredGoals: number; receivedGoals: number }
+  // Confirmed ABSENT from the real response — always falls back to an empty form array.
   form?: string
 }
 

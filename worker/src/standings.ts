@@ -21,16 +21,16 @@ export async function syncStandings(): Promise<void> {
       rows: rows.map((row) => ({
         teamId: String(row.team.id),
         position: row.position,
-        played: row.total.played,
-        won: row.total.win,
-        drawn: row.total.draw,
-        lost: row.total.lose,
-        goalsFor: row.total.goals.for,
-        goalsAgainst: row.total.goals.against,
-        goalDiff: row.total.goals.for - row.total.goals.against,
+        played: row.total.games,
+        won: row.total.wins,
+        drawn: row.total.draws,
+        lost: row.total.loses,
+        goalsFor: row.total.scoredGoals,
+        goalsAgainst: row.total.receivedGoals,
+        goalDiff: row.total.scoredGoals - row.total.receivedGoals,
         points: row.points,
-        // `form` presence on this endpoint is UNVERIFIED (worker/AGENTS.md §4) — degrades
-        // gracefully to no form badges (StandingsTable handles an empty array fine) if absent.
+        // `form` is confirmed ABSENT from this endpoint (worker/AGENTS.md §4) — degrades
+        // gracefully to no form badges (StandingsTable handles an empty array fine).
         form: parseForm(row.form),
       })),
     })
