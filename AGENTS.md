@@ -142,7 +142,7 @@ dosyasındaki değişiklikleri otomatik hot-reload eder.
 - **Xcode lisansı çözüldü, git kuruldu, GitHub'a push edildi.** Repo: **public**,
   `github.com/ayildirim12/tahmin-ligi`. `.env.local`, `.env.production.local` ve
   `worker/secrets/` (service account) `.gitignore` ile korunuyor.
-- **Gerçek Firebase projesi hazır**: `tahmin-ligi-sl2026` (hesap: [redacted]).
+- **Gerçek Firebase projesi hazır**: `tahmin-ligi-sl2026` (kullanıcının kendi Google hesabında).
   Firestore (Spark, `eur3`) oluşturuldu, `firestore.rules`/`firestore.indexes.json` deploy edildi,
   web app kaydedildi (config → `.env.production.local`, gitignored ama SIR DEĞİL — Firebase web
   config zaten public olmak üzere tasarlanmış). Worker için `tahmin-ligi-worker` servis hesabı
