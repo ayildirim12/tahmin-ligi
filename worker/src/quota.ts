@@ -1,7 +1,7 @@
 import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { db } from './firestoreAdmin.ts'
 
-const QUOTA_DOC = db.collection('syncState').doc('apiFootballQuota')
+const QUOTA_DOC = db.collection('syncState').doc('highlightlyQuota')
 const DAILY_BUDGET = 100
 const HOUSEKEEPING_RESERVE = 10
 const LIVE_BUDGET = DAILY_BUDGET - HOUSEKEEPING_RESERVE
@@ -23,7 +23,7 @@ export async function getRequestsUsedToday(): Promise<number> {
   })
 }
 
-/** Call once per actual API-Football request made. Transactional so overlapping runs can't double-count. */
+/** Call once per actual Highlightly request made. Transactional so overlapping runs can't double-count. */
 export async function recordApiRequest(): Promise<void> {
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(QUOTA_DOC)
@@ -39,9 +39,10 @@ export async function recordApiRequest(): Promise<void> {
 /**
  * How long to sleep between live polls, given how many live-minutes remain
  * today (across all matches, concurrent windows merged into one) and how
- * much of the daily API-Football budget is left. Floors just above the
- * 10-req/min hard rate limit; ceilings at the outer 5-minute cron cadence
- * (degrading to it is a no-op, not a failure).
+ * much of the daily Highlightly budget (100/day, no stated per-minute cap)
+ * is left. The 7s floor is just a sane self-imposed minimum, not a documented
+ * rate limit; the ceiling is the outer 5-minute cron cadence (degrading to it
+ * is a no-op, not a failure).
  */
 export function computeIntervalSeconds(remainingLiveMinutesToday: number, requestsUsedToday: number): number {
   const remainingBudget = Math.max(0, LIVE_BUDGET - requestsUsedToday)

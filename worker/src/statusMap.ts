@@ -1,15 +1,37 @@
 import type { MatchStatus } from '../../src/shared/types.ts'
 
-const LIVE_CODES = new Set(['1H', '2H', 'ET', 'BT', 'P', 'SUSP', 'INT', 'LIVE'])
-const FINISHED_CODES = new Set(['FT', 'AET', 'PEN', 'AWD', 'WO'])
-const POSTPONED_CODES = new Set(['PST', 'TBD'])
-const CANCELLED_CODES = new Set(['CANC', 'ABD'])
+// Highlightly returns a free-text status in `state.description` (not short codes like
+// API-Football's "NS"/"1H"/"FT"). Matched case-insensitively; UNVERIFIED against a real
+// API key — confirm the exact strings once live data is available (worker/AGENTS.md §4)
+// and extend these sets if a status falls through to the SCHEDULED default unexpectedly.
+const HALFTIME = new Set(['half time', 'halftime', 'ht'])
+const LIVE_DESCRIPTIONS = new Set([
+  'first half',
+  'second half',
+  'live',
+  'in play',
+  'extra time',
+  'penalties',
+  'penalty shootout',
+])
+const FINISHED_DESCRIPTIONS = new Set(['finished', 'full time', 'ft', 'match finished'])
+const POSTPONED_DESCRIPTIONS = new Set(['postponed', 'time to be defined', 'tbd'])
+const CANCELLED_DESCRIPTIONS = new Set(['cancelled', 'canceled', 'abandoned'])
 
-export function mapApiStatus(short: string): MatchStatus {
-  if (short === 'HT') return 'HT'
-  if (LIVE_CODES.has(short)) return 'LIVE'
-  if (FINISHED_CODES.has(short)) return 'FINISHED'
-  if (POSTPONED_CODES.has(short)) return 'POSTPONED'
-  if (CANCELLED_CODES.has(short)) return 'CANCELLED'
+export function mapApiStatus(description: string): MatchStatus {
+  const normalized = description.trim().toLowerCase()
+  if (HALFTIME.has(normalized)) return 'HT'
+  if (LIVE_DESCRIPTIONS.has(normalized)) return 'LIVE'
+  if (FINISHED_DESCRIPTIONS.has(normalized)) return 'FINISHED'
+  if (POSTPONED_DESCRIPTIONS.has(normalized)) return 'POSTPONED'
+  if (CANCELLED_DESCRIPTIONS.has(normalized)) return 'CANCELLED'
   return 'SCHEDULED'
+}
+
+/** Splits Highlightly's "H - A" score string into numbers. Returns nulls if not started/unavailable. */
+export function parseScore(current: string | null | undefined): { home: number | null; away: number | null } {
+  if (!current) return { home: null, away: null }
+  const match = current.match(/(\d+)\s*-\s*(\d+)/)
+  if (!match) return { home: null, away: null }
+  return { home: Number(match[1]), away: Number(match[2]) }
 }

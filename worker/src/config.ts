@@ -5,12 +5,14 @@ function required(name: string): string {
 }
 
 export const config = {
-  apiFootballKey: process.env.API_FOOTBALL_KEY ?? '',
-  leagueId: Number(process.env.SUPERLIG_LEAGUE_ID ?? '203'), // 203 = API-Football's Süper Lig id — confirm via /leagues lookup during setup
+  highlightlyApiKey: process.env.HIGHLIGHTLY_API_KEY ?? '',
+  // Highlightly's own numeric league id — UNVERIFIED placeholder, confirm via
+  // findLeagueId('Super Lig', 'TR') once a real API key is available (see worker/AGENTS.md §4).
+  leagueId: Number(process.env.SUPERLIG_LEAGUE_ID ?? '0'),
   season: process.env.SUPERLIG_SEASON ?? String(new Date().getFullYear()),
   usingEmulator: Boolean(process.env.FIRESTORE_EMULATOR_HOST),
 }
 
-export function requireApiFootballKey(): string {
-  return required('API_FOOTBALL_KEY')
+export function requireHighlightlyKey(): string {
+  return required('HIGHLIGHTLY_API_KEY')
 }

@@ -70,7 +70,7 @@ React SPA ──onSnapshot──> Firestore (Spark) <──Admin SDK (kuralları
 | `matches/{id}` | worker | global, tüm topluluklarda ortak |
 | `standings/superlig` | worker | tek doküman, tüm tablo |
 | `meta/config` | worker | `season, currentGameweek, lastFixtureSyncAt, lastStandingsSyncAt` |
-| `syncState/apiFootballQuota` | worker | günlük istek sayacı |
+| `syncState/highlightlyQuota` | worker | günlük istek sayacı |
 
 **Neden tahminler topluluk bazlı (global değil):** Bir maç kilitlendikten sonra tahmin sadece AYNI
 topluluktaki üyelere görünmeli (kullanıcı kararı). Global saklansaydı, kilitlenen bir tahmin
@@ -149,14 +149,18 @@ dosyasındaki değişiklikleri otomatik hot-reload eder.
   oluşturuldu (`roles/datastore.user`), anahtarı `worker/secrets/service-account.json`'da
   (gitignored) VE GitHub secret `FIREBASE_SERVICE_ACCOUNT_JSON` olarak yüklü. Gerçek Firestore'a
   karşı Admin SDK write+read testi yapıldı, başarılı.
-- **Google Sign-In auth provider'ı HENÜZ AÇILMADI** — bu adım kullanıcının kendisinin
-  console'da tek tıkla yapması bekleniyor:
-  https://console.firebase.google.com/project/tahmin-ligi-sl2026/authentication/providers
+- **Google Sign-In auth provider'ı AÇILDI VE DOĞRULANDI** (Identity Toolkit API'den
+  `"enabled": true` kontrol edildi).
+- **Canlı veri sağlayıcısı API-Football'dan Highlightly'e değiştirildi** (kullanıcının "başka
+  bir API var mı" sorusu üzerine araştırılıp seçildi — detay ve gerekçe: `worker/AGENTS.md`
+  başlığı). `worker/src/apiFootball.ts` → `worker/src/highlightlyApi.ts`, `statusMap.ts`
+  Highlightly'nin metin tabanlı durumlarına göre yeniden yazıldı. **Hiçbir response şekli gerçek
+  API'ye karşı doğrulanmadı** (bkz. `worker/AGENTS.md §4`) — dokümantasyon örneklerinden çıkarıldı.
 - **GitHub Actions workflow'u BİLİNÇLİ OLARAK DEVRE DIŞI** (`gh workflow disable`) — çünkü
-  `API_FOOTBALL_KEY` secret'ı ve `SUPERLIG_LEAGUE_ID` variable'ı henüz yok, aktifken her 5
+  `HIGHLIGHTLY_API_KEY` secret'ı ve `SUPERLIG_LEAGUE_ID` variable'ı henüz yok, aktifken her 5
   dakikada bir başarısız olup e-posta spam'i yapardı. `SUPERLIG_SEASON=2026` variable'ı ve
-  `FIREBASE_SERVICE_ACCOUNT_JSON` secret'ı zaten ayarlı. API-Football anahtarı gelince:
-  `gh secret set API_FOOTBALL_KEY --repo ayildirim12/tahmin-ligi`,
+  `FIREBASE_SERVICE_ACCOUNT_JSON` secret'ı zaten ayarlı. Highlightly anahtarı gelince:
+  `gh secret set HIGHLIGHTLY_API_KEY --repo ayildirim12/tahmin-ligi`,
   `gh variable set SUPERLIG_LEAGUE_ID --repo ayildirim12/tahmin-ligi --body <ID>`, sonra
   `gh workflow enable "Sync Süper Lig data" --repo ayildirim12/tahmin-ligi`.
 
@@ -164,11 +168,10 @@ dosyasındaki değişiklikleri otomatik hot-reload eder.
 
 ## 7. Yapılacaklar (proje geneli, öncelik sırasıyla)
 
-1. **Google Sign-In'i aç** (SADECE kullanıcı yapabilir, konsol tıklaması):
-   https://console.firebase.google.com/project/tahmin-ligi-sl2026/authentication/providers
-2. **API-Football + GitHub kurulumu**: detay için `worker/AGENTS.md` §4 ve §6 — anahtar/lig ID
-   alındıktan sonra workflow'u yeniden etkinleştirmeyi unutma (§6 yukarıda).
-3. **Deploy**: `npm run build` (bu `.env.production.local`'ı otomatik kullanır) →
+1. **Highlightly hesabı + GitHub kurulumu**: detay için `worker/AGENTS.md` §4 ve §6 — anahtar/lig
+   ID alındıktan sonra TÜM §4 doğrulama maddelerini test edip workflow'u yeniden etkinleştirmeyi
+   unutma (SADECE kullanıcı hesap açabilir; doğrulama + kod tarafı burada yapılabilir).
+2. **Deploy**: `npm run build` (bu `.env.production.local`'ı otomatik kullanır) →
    `firebase deploy --only hosting --project=production` → Firebase Console → Authentication →
    Authorized domains'e prod Hosting alan adını ekle (Google girişinin prod'da çalışması için).
 

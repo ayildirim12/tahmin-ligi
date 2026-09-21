@@ -1,28 +1,31 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { config } from './config.ts'
-import { fetchLeagueFixtures, type ApiFixture } from './apiFootball.ts'
+import { fetchLeagueFixtures, type HlMatch } from './highlightlyApi.ts'
 import { db } from './firestoreAdmin.ts'
-import { mapApiStatus } from './statusMap.ts'
+import { mapApiStatus, parseScore } from './statusMap.ts'
 
 function parseRound(round: string): number {
   const match = round.match(/(\d+)/)
   return match ? Number(match[1]) : 0
 }
 
-function fixtureToMatchDoc(fixture: ApiFixture) {
+function fixtureToMatchDoc(fixture: HlMatch) {
+  const status = mapApiStatus(fixture.state.description)
+  const { home, away } = parseScore(fixture.state.score.current)
+
   return {
-    apiFixtureId: fixture.fixture.id,
+    apiFixtureId: fixture.id,
     season: String(fixture.league.season),
-    gameweek: parseRound(fixture.league.round),
-    homeTeamId: String(fixture.teams.home.id),
-    awayTeamId: String(fixture.teams.away.id),
-    kickoffAt: Timestamp.fromDate(new Date(fixture.fixture.date)),
-    status: mapApiStatus(fixture.fixture.status.short),
-    liveHomeGoals: fixture.goals.home,
-    liveAwayGoals: fixture.goals.away,
-    finalHomeGoals: mapApiStatus(fixture.fixture.status.short) === 'FINISHED' ? fixture.goals.home : null,
-    finalAwayGoals: mapApiStatus(fixture.fixture.status.short) === 'FINISHED' ? fixture.goals.away : null,
-    elapsedMinutes: fixture.fixture.status.elapsed,
+    gameweek: parseRound(fixture.round),
+    homeTeamId: String(fixture.homeTeam.id),
+    awayTeamId: String(fixture.awayTeam.id),
+    kickoffAt: Timestamp.fromDate(new Date(fixture.date)),
+    status,
+    liveHomeGoals: home,
+    liveAwayGoals: away,
+    finalHomeGoals: status === 'FINISHED' ? home : null,
+    finalAwayGoals: status === 'FINISHED' ? away : null,
+    elapsedMinutes: fixture.state.clock,
     lastSyncedAt: Timestamp.now(),
   }
 }
@@ -33,7 +36,7 @@ export async function syncFixtures(): Promise<{ currentGameweek: number }> {
   const batch = db.batch()
 
   for (const fixture of fixtures) {
-    const ref = db.collection('matches').doc(String(fixture.fixture.id))
+    const ref = db.collection('matches').doc(String(fixture.id))
     batch.set(ref, fixtureToMatchDoc(fixture), { merge: true })
   }
   await batch.commit()
@@ -51,10 +54,10 @@ export async function syncFixtures(): Promise<{ currentGameweek: number }> {
 }
 
 /** The "current" gameweek is the earliest round that isn't fully finished yet, falling back to the last round if the season is over. */
-function inferCurrentGameweek(fixtures: ApiFixture[]): number {
-  const byRound = new Map<number, ApiFixture[]>()
+function inferCurrentGameweek(fixtures: HlMatch[]): number {
+  const byRound = new Map<number, HlMatch[]>()
   for (const fixture of fixtures) {
-    const round = parseRound(fixture.league.round)
+    const round = parseRound(fixture.round)
     const list = byRound.get(round) ?? []
     list.push(fixture)
     byRound.set(round, list)
@@ -63,7 +66,7 @@ function inferCurrentGameweek(fixtures: ApiFixture[]): number {
   const rounds = [...byRound.keys()].sort((a, b) => a - b)
   for (const round of rounds) {
     const matches = byRound.get(round)!
-    const allFinished = matches.every((m) => mapApiStatus(m.fixture.status.short) === 'FINISHED')
+    const allFinished = matches.every((m) => mapApiStatus(m.state.description) === 'FINISHED')
     if (!allFinished) return round
   }
   return rounds.at(-1) ?? 1
