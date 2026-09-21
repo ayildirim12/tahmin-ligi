@@ -6,7 +6,7 @@ const BASE_URL = 'https://soccer.highlightly.net'
 
 interface PaginatedResponse<T> {
   data: T[]
-  pagination?: { limit: number; offset: number; total?: number }
+  pagination?: { limit: number; offset: number; totalCount?: number }
 }
 
 async function call<T>(path: string, params: Record<string, string | number> = {}): Promise<T> {
@@ -25,8 +25,10 @@ async function call<T>(path: string, params: Record<string, string | number> = {
 }
 
 /**
- * `/matches` paginates (max 100/page). Loops until a short page signals the end.
- * Shape of each match is UNVERIFIED against a real API key — see worker/AGENTS.md §4.
+ * `/matches` paginates (max 100/page, confirmed response shape:
+ * `{ data: [...], pagination: { limit, offset, totalCount } }`). Stops once `totalCount` is
+ * reached, falling back to "short page" detection if `totalCount` is ever missing.
+ * Shape of each match item is UNVERIFIED against a real API key — see worker/AGENTS.md §4.
  */
 async function fetchAllPages<T>(path: string, params: Record<string, string | number>): Promise<T[]> {
   const pageSize = 100
@@ -37,7 +39,9 @@ async function fetchAllPages<T>(path: string, params: Record<string, string | nu
     const page = await call<PaginatedResponse<T>>(path, { ...params, limit: pageSize, offset })
     const items = page.data ?? []
     results.push(...items)
-    if (items.length < pageSize) break
+
+    const totalCount = page.pagination?.totalCount
+    if (totalCount !== undefined ? results.length >= totalCount : items.length < pageSize) break
     offset += pageSize
   }
 
@@ -109,10 +113,13 @@ export async function fetchLeagueTeams(): Promise<HlTeam[]> {
   return [...byId.values()]
 }
 
-/** One-off lookup helper for setup — confirms the real league id to put in SUPERLIG_LEAGUE_ID. */
-export function findLeagueId(name: string, countryCode: string) {
+/**
+ * One-off lookup helper for setup — confirms the real league id to put in SUPERLIG_LEAGUE_ID.
+ * Param names (`leagueName`, `countryCode`) are confirmed from the /leagues docs table.
+ */
+export function findLeagueId(leagueName: string, countryCode: string) {
   return call<{ data: Array<{ id: number; name: string; country: { code: string; name: string } }> }>(
     '/leagues',
-    { name, countryCode },
+    { leagueName, countryCode },
   )
 }

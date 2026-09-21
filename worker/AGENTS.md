@@ -110,11 +110,40 @@ kendi canlı verisini "dakikada bir" yenilediğini belirtiyor — bu, ~1dk hedef
 
 ---
 
-## 4. Highlightly — DOĞRULANMASI GEREKEN noktalar (ÖNEMLİ, oku)
+## 4. Highlightly — doğrulanan noktalar ve hâlâ AÇIK olanlar
 
-Bu entegrasyon **hiçbir zaman gerçek bir API anahtarıyla test edilmedi** — tamamen
-highlightly.net'in genel dokümantasyon sayfalarındaki ÖRNEK response'lara göre yazıldı. Gerçek
-anahtar alınır alınmaz aşağıdaki her madde tek tek doğrulanmalı:
+Bu entegrasyon **hiçbir zaman gerçek bir API anahtarıyla test edilmedi**. İlk yazımda
+highlightly.net'in genel dokümantasyon sayfasındaki (`/football-api/documentation/`) ÖRNEK
+response'lara göre yazıldı; sonra kullanıcı isteğiyle o sayfa TEKRAR, bu sefer "her şeyi
+kelimesi kelimesine alıntıla" diye özel olarak taranıp birkaç gerçek hata bulunup düzeltildi
+(aşağıda işaretli). Yine de **gerçek bir istekle hiç doğrulanmadı** — bu hâlâ geçerli.
+
+**Dokümantasyondan KELİMESİ KELİMESİNE doğrulanmış, artık güvenilir:**
+
+- **Auth header**: direkt erişimde de (`soccer.highlightly.net`) `x-rapidapi-key` header'ı
+  kullanılıyor (RapidAPI'ye özgü değilmiş, ikisinde de aynı header adı) — kodda doğru.
+- **`state.description`'ın TAM 19 değerlik listesi** (dokümantasyondan birebir alıntı):
+  "Not started", "First half", "Second half", "Half time", "Extra time", "Break time",
+  "Penalties", "Finished", "Finished after penalties", "Finished after extra time",
+  "Postponed", "Suspended", "Cancelled", "Awarded", "Interrupted", "Abandoned",
+  "In progress", "Unknown", "To be announced". `statusMap.ts` artık bu 19 değerin TAMAMINI
+  tek tek sınıflandırıyor (önceden sadece birkaç tanesi tahmin edilmişti, "Suspended",
+  "Interrupted", "Awarded", "Break time" gibi değerler hiç ele alınmıyordu ve sessizce
+  `SCHEDULED`'a düşüyordu — düzeltildi, artık eşleşmeyen bir değer gelirse `console.warn` ile
+  Actions loglarında görünür oluyor).
+- **`/leagues` param adı**: `name` DEĞİL, **`leagueName`** — `findLeagueId()` bu hatayla
+  yazılmıştı, düzeltildi.
+- **`/matches` param adları**: `leagueId`, `date`, `season`, `limit`, `offset` (kullandıklarımız)
+  hepsi dokümantasyon tablosunda birebir doğrulandı — değişiklik gerekmedi.
+- **`/teams` endpoint'inde lig filtresi YOK** (param listesi: sadece `limit,offset,name,type`) —
+  takım listesini fikstürlerden türetme kararı DOĞRU çıktı, değişiklik gerekmiyor.
+- **Sayfalama response şekli**: `{ data: [...], pagination: { limit, offset, totalCount } }` —
+  alan adı `total` değil **`totalCount`**, düzeltildi. `fetchAllPages` artık `totalCount`'a
+  ulaşınca duruyor (önceden sadece "son sayfa kısaysa dur" vardı, hâlâ yedek olarak duruyor).
+- **`date` formatı**: `YYYY-MM-DD` doğrulandı — `live.ts`'teki `turkeyTodayYmd()` zaten bu
+  formatı üretiyor, değişiklik gerekmedi.
+
+**Hâlâ DOĞRULANMAMIŞ, gerçek anahtarla test edilmeli:**
 
 1. **Lig ID**: `config.ts`'teki `SUPERLIG_LEAGUE_ID` varsayılanı **`0` (kasıtlı geçersiz)**.
    ```bash
@@ -123,28 +152,16 @@ anahtar alınır alınmaz aşağıdaki her madde tek tek doğrulanmalı:
    import('./src/highlightlyApi.ts').then(m => m.findLeagueId('Super Lig','TR')).then(r => console.log(JSON.stringify(r, null, 2)))
    "
    ```
-   `countryCode` param adı/değeri de DOĞRULANMADI — `/leagues` çağrısı beklenmedik sonuç
-   dönerse `name`/`countryCode` yerine farklı param adları (örn. `country`) denenmeli.
-2. **`state.description` metinleri**: `statusMap.ts`'teki `LIVE_DESCRIPTIONS`/
-   `FINISHED_DESCRIPTIONS`/`POSTPONED_DESCRIPTIONS`/`CANCELLED_DESCRIPTIONS` set'leri
-   dokümantasyonda geçen "First half", "Second half", "Finished", "Postponed" örneklerinden
-   tahmin edildi. Gerçek bir canlı maçta `state.description`'ın TAM OLARAK ne yazdığını
-   (büyük/küçük harf, "Half Time" mi "HT" mi vb.) loglardan doğrula — eşleşmezse maç sessizce
-   `SCHEDULED` durumunda takılı kalır (varsayılan fallback), bu sessiz bir hata modu, dikkatli ol.
-3. **`state.score.current` formatı**: `"H - A"` (örn. `"3 - 1"`) varsayıldı, `parseScore()`
-   regex'i buna göre yazıldı. Farklı bir ayraç/format çıkarsa (`"3-1"` boşluksuz, `"3:1"` vb.)
-   regex hâlâ çalışır (`\s*-\s*` esnek boşluk bırakıyor) ama tire dışında bir ayraç kullanılırsa
-   (`:` gibi) BOZULUR — gerçek veriyle doğrula.
-4. **`/matches` sayfalama**: `fetchAllPages`'in "son sayfa `limit`'ten kısaysa dur" mantığı
-   standart bir varsayım, Highlightly'nin gerçekten bu şekilde davrandığı doğrulanmadı. Bir
-   sezonun tüm maçlarının (~300+) eksiksiz çekildiğini `db-stats` tarzı bir sayımla doğrula.
-5. **`/standings` şekli**: `groups[0].standings` yapısı varsayıldı (tek grup/lig için). `form`
-   alanının o response'da GERÇEKTEN var olup olmadığı da belirsiz — yoksa `standings.ts` zaten
-   zarifçe boş forma düşüyor (kod bunu ele alıyor, ama teyit edilmeli).
-6. **`/teams` endpoint'i hiç kullanılmıyor** — bilinçli bir tercih (dokümantasyonda lig filtresi
-   görünmüyordu), takım listesi fikstürlerden türetiliyor. Eğer ileride Highlightly'nin gerçek
-   `/teams?leagueId=X` gibi bir filtresi olduğu görülürse, bu daha basit/güvenilir olabilir —
-   `teams.ts`'i buna göre güncellemek bir seçenek.
+2. **`state.score.current` formatı**: `"H - A"` (örn. `"3 - 1"`) sadece dokümantasyon ÖRNEĞİNDEN
+   görüldü, farklı maçlarda gerçekten hep bu formatta mı geliyor doğrulanmadı. `parseScore()`
+   regex'i tire dışında bir ayraç (`:` gibi) gelirse BOZULUR.
+3. **`homeTeam`/`awayTeam`/`league`/`round` alan adlarının GERÇEK response'ta da böyle olduğu**
+   — dokümantasyondaki tek örnek match objesinden çıkarıldı (ve o örnekte home/away takım id'leri
+   birbiriyle aynıydı, muhtemelen sahte/placeholder veri — bu yüzden bu alanlar konusunda hâlâ
+   temkinli olun).
+4. **`/standings` şekli**: `groups[0].standings` yapısı ve `form` alanının varlığı hiç
+   doğrulanmadı (dokümantasyonun standings bölümü matches kadar detaylı taranmadı) — yoksa
+   `standings.ts` zaten zarifçe boş forma düşüyor.
 
 **Test yöntemi**: `worker/scratch/` altına (git'e girmez) `console.log(JSON.stringify(...))`
 içeren geçici bir script yazıp gerçek anahtarla çalıştırmak, her endpoint'in TAM response
