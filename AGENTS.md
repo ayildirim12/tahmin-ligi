@@ -139,20 +139,38 @@ dosyasındaki değişiklikleri otomatik hot-reload eder.
   `tsc --noEmit` temiz.
 - **Hiçbir zaman gerçek API-Football verisine karşı çalıştırılmadı** — sadece yerel seed script'i
   ve elle yazılmış simülasyon script'leriyle test edildi (detay: `worker/AGENTS.md`).
-- **Xcode lisansı çözüldü, ilk git commit atıldı** (`48e6ca7`, 108 dosya). Working tree temiz.
-  `.env.local` ve service account JSON'ları `.gitignore` ile korunuyor, staged dosyalar commit
-  öncesi tek tek kontrol edildi (hassas dosya yok).
+- **Xcode lisansı çözüldü, git kuruldu, GitHub'a push edildi.** Repo: **public**,
+  `github.com/ayildirim12/tahmin-ligi`. `.env.local`, `.env.production.local` ve
+  `worker/secrets/` (service account) `.gitignore` ile korunuyor.
+- **Gerçek Firebase projesi hazır**: `tahmin-ligi-sl2026` (hesap: [redacted]).
+  Firestore (Spark, `eur3`) oluşturuldu, `firestore.rules`/`firestore.indexes.json` deploy edildi,
+  web app kaydedildi (config → `.env.production.local`, gitignored ama SIR DEĞİL — Firebase web
+  config zaten public olmak üzere tasarlanmış). Worker için `tahmin-ligi-worker` servis hesabı
+  oluşturuldu (`roles/datastore.user`), anahtarı `worker/secrets/service-account.json`'da
+  (gitignored) VE GitHub secret `FIREBASE_SERVICE_ACCOUNT_JSON` olarak yüklü. Gerçek Firestore'a
+  karşı Admin SDK write+read testi yapıldı, başarılı.
+- **Google Sign-In auth provider'ı HENÜZ AÇILMADI** — bu adım kullanıcının kendisinin
+  console'da tek tıkla yapması bekleniyor:
+  https://console.firebase.google.com/project/tahmin-ligi-sl2026/authentication/providers
+- **GitHub Actions workflow'u BİLİNÇLİ OLARAK DEVRE DIŞI** (`gh workflow disable`) — çünkü
+  `API_FOOTBALL_KEY` secret'ı ve `SUPERLIG_LEAGUE_ID` variable'ı henüz yok, aktifken her 5
+  dakikada bir başarısız olup e-posta spam'i yapardı. `SUPERLIG_SEASON=2026` variable'ı ve
+  `FIREBASE_SERVICE_ACCOUNT_JSON` secret'ı zaten ayarlı. API-Football anahtarı gelince:
+  `gh secret set API_FOOTBALL_KEY --repo ayildirim12/tahmin-ligi`,
+  `gh variable set SUPERLIG_LEAGUE_ID --repo ayildirim12/tahmin-ligi --body <ID>`, sonra
+  `gh workflow enable "Sync Süper Lig data" --repo ayildirim12/tahmin-ligi`.
 
 ---
 
 ## 7. Yapılacaklar (proje geneli, öncelik sırasıyla)
 
-1. **Gerçek Firebase projesi**: console'da oluştur → Google Auth aç → Firestore oluştur (Spark) →
-   web config'i `.env.local`'a yaz (`.env.example`'a bak) → service account JSON indir (worker
-   için, repoya ASLA commitleme). Detaylı adımlar `README.md`'de.
-2. **API-Football + GitHub kurulumu**: detay için `worker/AGENTS.md`.
-3. **Deploy**: `npm run build && firebase deploy --only hosting,firestore` → Firebase Console →
-   Authentication → Authorized domains'e prod alan adını ekle.
+1. **Google Sign-In'i aç** (SADECE kullanıcı yapabilir, konsol tıklaması):
+   https://console.firebase.google.com/project/tahmin-ligi-sl2026/authentication/providers
+2. **API-Football + GitHub kurulumu**: detay için `worker/AGENTS.md` §4 ve §6 — anahtar/lig ID
+   alındıktan sonra workflow'u yeniden etkinleştirmeyi unutma (§6 yukarıda).
+3. **Deploy**: `npm run build` (bu `.env.production.local`'ı otomatik kullanır) →
+   `firebase deploy --only hosting --project=production` → Firebase Console → Authentication →
+   Authorized domains'e prod Hosting alan adını ekle (Google girişinin prod'da çalışması için).
 
 ---
 

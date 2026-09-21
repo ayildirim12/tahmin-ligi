@@ -125,14 +125,24 @@ değişikliği gerekmez — sadece `src/shared/scoring.ts` değişir, worker oto
 
 ## 6. Yapılacaklar (worker'a özel)
 
-1. **API-Football hesabı**: dashboard.api-football.com → ücretsiz kayıt → anahtar al.
-2. **Lig ID doğrulama**: §4'teki `findLeagueId` komutunu çalıştır.
-3. **GitHub reposu public olmalı** (neden: `../AGENTS.md §1`). Secrets: `API_FOOTBALL_KEY`,
-   `FIREBASE_SERVICE_ACCOUNT_JSON` (tam JSON içeriği). Variables: `SUPERLIG_LEAGUE_ID`,
-   `SUPERLIG_SEASON` (örn. `2026`).
-4. **İlk gerçek çalıştırma**: `.github/workflows/sync.yml`'i `workflow_dispatch` ile elle tetikle,
-   Actions logu + Firestore konsolundan `matches`/`teams`/`standings` dokümanlarının doğru
-   yazıldığını doğrula.
+**Tamamlanan:** GitHub reposu oluşturuldu (`ayildirim12/tahmin-ligi`, **public**), kod push
+edildi. Secret `FIREBASE_SERVICE_ACCOUNT_JSON` ve variable `SUPERLIG_SEASON=2026` zaten ayarlı
+(`gh secret list` / `gh variable list --repo ayildirim12/tahmin-ligi` ile doğrulanabilir). Worker
+servis hesabının (`tahmin-ligi-worker@tahmin-ligi-sl2026.iam.gserviceaccount.com`,
+`roles/datastore.user`) gerçek Firestore'a yazabildiği doğrulandı. **Workflow şu an bilinçli
+olarak `gh workflow disable` ile durduruldu** (aşağıdaki 1-2 tamamlanmadan aktif olursa her 5
+dakikada bir başarısız olup e-posta spam'i yapar).
+
+1. **API-Football hesabı**: dashboard.api-football.com → ücretsiz kayıt → anahtar al →
+   `gh secret set API_FOOTBALL_KEY --repo ayildirim12/tahmin-ligi` (değeri stdin'den okur, terminale
+   yapıştırıp Ctrl+D, ya da `echo "<anahtar>" | gh secret set ...`).
+2. **Lig ID doğrulama**: §4'teki `findLeagueId` komutunu çalıştır, sonra
+   `gh variable set SUPERLIG_LEAGUE_ID --repo ayildirim12/tahmin-ligi --body <ID>`.
+3. **Workflow'u yeniden etkinleştir**: `gh workflow enable "Sync Süper Lig data" --repo
+   ayildirim12/tahmin-ligi`.
+4. **İlk gerçek çalıştırma**: `gh workflow run "Sync Süper Lig data" --repo ayildirim12/tahmin-ligi`
+   ile elle tetikle, `gh run watch --repo ayildirim12/tahmin-ligi` ile izle, Firestore konsolundan
+   `matches`/`teams`/`standings` dokümanlarının doğru yazıldığını doğrula.
 5. **(Opsiyonel/backlog)** "Wins" tie-break'i gerçek "haftalık kazanma" semantiğine çevirmek
    istenirse: `finalize.ts`'e bir gameweek-sonu pass'i eklenmeli — o haftanın TÜM maçları
    `pointsFinalized` olduğunda, topluluk üyelerinin o haftaki toplam puanını karşılaştırıp en
