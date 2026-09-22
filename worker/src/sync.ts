@@ -70,6 +70,15 @@ async function main() {
       console.log(`[sync] finalizing newly-finished matches: ${newlyFinishedMatchIds.join(', ')}`)
       await finalizeFinishedMatches(newlyFinishedMatchIds)
       await runLockMaintenance()
+      // Standings (O/G/B/M/AV/P/Son5) otherwise only refresh on the 2-hour
+      // housekeeping timer — a match finishing shouldn't have to wait up to
+      // that long to move a team's position/points. Matches that finish
+      // within the same poll tick are already batched into one
+      // newlyFinishedMatchIds list, so this is naturally one extra request
+      // per *distinct finishing moment* during a live window, not one per
+      // match — cheap relative to the live-poll budget.
+      console.log('[sync] refreshing standings after match finish')
+      await syncStandings()
     }
 
     candidates = await getLiveCandidates()

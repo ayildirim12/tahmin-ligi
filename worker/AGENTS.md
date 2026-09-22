@@ -99,7 +99,12 @@ gelir):
      yoğun gün 2-4dk'ya kadar uzayabilir, ASLA günlük kotayı aşmaz).
    - `pollLiveScores()` çağırır (tek istek, o günün tüm Süper Lig maçlarını — dolayısıyla tüm
      eşzamanlı canlı maçları — kapsar).
-   - Yeni biten maç varsa hemen `finalizeFinishedMatches` çalıştırır (bir sonraki turu beklemez).
+   - Yeni biten maç varsa hemen `finalizeFinishedMatches` çalıştırır (bir sonraki turu beklemez)
+     **VE `syncStandings()` çalıştırır** (kullanıcı isteğiyle eklendi — daha önce Puan Durumu
+     tablosu SADECE 2 saatlik housekeeping zamanlayıcısında yenileniyordu, maç bitişinden
+     bağımsızdı; "tüm maçlar bittiğinde güncelleme olacak" beklentisiyle tutarlı değildi). Aynı
+     poll turunda birden fazla maç birden bitmişse (`newlyFinishedMatchIds` zaten toplu geliyor),
+     bu TEK bir ekstra `/standings` isteği — maç başına değil, "bitiş anı" başına.
    - Canlı maç kalmadıysa döngüden erken çıkar.
 
 **Pratik etki**: ortalama ~1 dakika gecikme (tek maçlık pencerelerde), yoğun günlerde zarifçe
