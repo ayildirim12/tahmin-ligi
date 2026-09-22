@@ -1,6 +1,6 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { config } from './config.ts'
-import { fetchLeagueFixtures, type HlMatch } from './highlightlyApi.ts'
+import type { HlMatch } from './highlightlyApi.ts'
 import { db } from './firestoreAdmin.ts'
 import { mapApiStatus, parseScore } from './statusMap.ts'
 
@@ -30,9 +30,13 @@ function fixtureToMatchDoc(fixture: HlMatch) {
   }
 }
 
-/** Full-season fixture list sync — run on the low-frequency housekeeping cadence, not every tick. */
-export async function syncFixtures(): Promise<{ currentGameweek: number }> {
-  const fixtures = await fetchLeagueFixtures()
+/**
+ * Full-season fixture list sync — run on the low-frequency housekeeping cadence, not every
+ * tick. Takes an already-fetched fixture list (shared with syncTeams, which always runs in
+ * the same breath — see sync.ts) rather than fetching its own copy of the same ~150-match
+ * season list.
+ */
+export async function syncFixtures(fixtures: HlMatch[]): Promise<{ currentGameweek: number }> {
   const batch = db.batch()
 
   for (const fixture of fixtures) {

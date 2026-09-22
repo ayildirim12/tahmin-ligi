@@ -1,5 +1,5 @@
 import { db } from './firestoreAdmin.ts'
-import { fetchLeagueTeams } from './highlightlyApi.ts'
+import { deriveTeamsFromFixtures, type HlMatch } from './highlightlyApi.ts'
 import { TEAM_OVERRIDES } from './teamOverrides.ts'
 
 /**
@@ -16,8 +16,8 @@ import { TEAM_OVERRIDES } from './teamOverrides.ts'
  * curated override; an unknown team id (a future promotion/relegation swap) falls back to the
  * raw API name with a mechanically-derived shortName.
  */
-export async function syncTeams(): Promise<void> {
-  const teams = await fetchLeagueTeams()
+export async function syncTeams(fixtures: HlMatch[]): Promise<void> {
+  const teams = deriveTeamsFromFixtures(fixtures)
   const batch = db.batch()
 
   for (const team of teams) {

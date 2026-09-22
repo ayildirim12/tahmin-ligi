@@ -2,7 +2,6 @@ import { Timestamp } from 'firebase-admin/firestore'
 import { fetchMatchesForDate } from './highlightlyApi.ts'
 import { db } from './firestoreAdmin.ts'
 import { mapApiStatus, parseScore } from './statusMap.ts'
-import { recordApiRequest } from './quota.ts'
 
 // Turkey has stayed on UTC+3 year-round since 2016 (no DST) — a fixed offset is safe here.
 const TURKEY_UTC_OFFSET_HOURS = 3
@@ -21,7 +20,6 @@ function turkeyTodayYmd(): string {
  */
 export async function pollLiveScores(): Promise<{ newlyFinishedMatchIds: string[] }> {
   const todaysMatches = await fetchMatchesForDate(turkeyTodayYmd())
-  await recordApiRequest()
 
   const batch = db.batch()
   const newlyFinished: string[] = []

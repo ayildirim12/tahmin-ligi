@@ -1,6 +1,7 @@
 import { db } from './firestoreAdmin.ts'
 import { syncFixtures } from './fixtures.ts'
 import { finalizeFinishedMatches } from './finalize.ts'
+import { fetchLeagueFixtures } from './highlightlyApi.ts'
 import { runLockMaintenance } from './lock.ts'
 import { hasImminentOrLiveMatch, remainingLiveMinutesToday } from './liveWindow.ts'
 import { pollLiveScores } from './live.ts'
@@ -10,7 +11,10 @@ import { syncTeams } from './teams.ts'
 
 const RUN_BUDGET_MS = 4.5 * 60_000 // stay under the 5-minute cron cadence
 const FIXTURE_SYNC_INTERVAL_MS = 24 * 60 * 60_000
-const STANDINGS_SYNC_INTERVAL_MS = 2 * 60 * 60_000
+// Was 2h; now mostly a safety-net fallback since match-finish already triggers an immediate
+// resync (see the live loop below) — this only still matters if a finish is somehow never
+// observed live (e.g. a cron outage swallowed that match's whole live window).
+const STANDINGS_SYNC_INTERVAL_MS = 8 * 60 * 60_000
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -26,8 +30,9 @@ async function runDueHousekeeping(): Promise<void> {
 
   if (now - lastFixtureSync > FIXTURE_SYNC_INTERVAL_MS) {
     console.log('Syncing teams + fixtures...')
-    await syncTeams()
-    await syncFixtures()
+    const fixtures = await fetchLeagueFixtures()
+    await syncTeams(fixtures)
+    await syncFixtures(fixtures)
   }
 
   if (now - lastStandingsSync > STANDINGS_SYNC_INTERVAL_MS) {

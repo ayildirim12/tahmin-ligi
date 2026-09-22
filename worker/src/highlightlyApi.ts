@@ -1,4 +1,5 @@
 import { config, requireHighlightlyKey } from './config.ts'
+import { recordApiRequest } from './quota.ts'
 
 // Direct (non-RapidAPI) Highlightly access — only needs the API key header.
 // https://highlightly.net/football-api/documentation/
@@ -16,6 +17,13 @@ async function call<T>(path: string, params: Record<string, string | number> = {
   const res = await fetch(url, {
     headers: { 'x-rapidapi-key': requireHighlightlyKey() },
   })
+  // Recorded here (the one place every Highlightly call funnels through — including each
+  // page of a paginated fetch) so the daily quota counter reflects EVERY real request, not
+  // just the live-poll loop's own calls. Previously only live.ts recorded usage, so the
+  // adaptive live-poll budget was computed blind to what housekeeping (teams/fixtures/
+  // standings) had already spent that day, risking a real Highlightly-side overshoot past
+  // the 100/day free limit on a heavy match day.
+  await recordApiRequest()
 
   if (!res.ok) {
     throw new Error(`Highlightly ${path} failed: ${res.status} ${await res.text()}`)
@@ -105,9 +113,14 @@ export async function fetchStandings(): Promise<HlStandingRow[]> {
   return response.groups?.[0]?.standings ?? []
 }
 
-/** No dedicated league-filtered /teams endpoint confirmed — derive the team list from fixtures instead (also saves a request). */
-export async function fetchLeagueTeams(): Promise<HlTeam[]> {
-  const matches = await fetchLeagueFixtures()
+/**
+ * No dedicated league-filtered /teams endpoint confirmed — derive the team list from an
+ * already-fetched fixture list instead. Pure (no request of its own) so callers that need
+ * both the fixtures AND the team list (syncTeams + syncFixtures, always run together on the
+ * same housekeeping cadence — see sync.ts) can share one fetchLeagueFixtures() call instead
+ * of each independently re-fetching the same ~150-match season list.
+ */
+export function deriveTeamsFromFixtures(matches: HlMatch[]): HlTeam[] {
   const byId = new Map<number, HlTeam>()
   for (const match of matches) {
     byId.set(match.homeTeam.id, match.homeTeam)

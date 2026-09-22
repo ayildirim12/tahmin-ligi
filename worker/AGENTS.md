@@ -85,8 +85,12 @@ GitHub Actions cron'u **her 5 dakikada bir** tetiklenir (bu, yeni bir ÇALIŞTIR
 başladığının tabanı — 5 dakikadan daha sık güncelleme, tek bir çalıştırmanın İÇİNDEKİ döngüden
 gelir):
 
-1. **Vadesi gelmiş bakım işleri** (`runDueHousekeeping`): fikstür senkronu >24 saatse, puan
-   durumu senkronu >2 saatse çalışır.
+1. **Vadesi gelmiş bakım işleri** (`runDueHousekeeping`): fikstür+takım senkronu >24 saatse,
+   puan durumu senkronu >8 saatse çalışır (**8 saat**, eskiden 2 saatti — artık standings'in
+   ASIL tazelik mekanizması maç-bitince-hemen-yenile [aşağı §], bu zamanlayıcı sadece bir güvenlik
+   ağı, bu yüzden aralık genişletildi, bkz. §6 kota tartışması). Fikstür+takım senkronu tek bir
+   `fetchLeagueFixtures()` çağrısını `syncTeams`/`syncFixtures` arasında PAYLAŞIR (eskiden ikisi
+   ayrı ayrı aynı ~150 maçlık listeyi çekiyordu — 4 istek yerine 2).
 2. **Kilit bakımı** (`runLockMaintenance`) + **puan kesinleştirme** (`finalizeFinishedMatches`) —
    her çalıştırmada, API maliyeti yok.
 3. **Canlı pencere kontrolü**: Firestore'da `status in [SCHEDULED,LIVE,HT]` olan maçlardan biri
@@ -201,6 +205,21 @@ değişikliği gerekmez — sadece `src/shared/scoring.ts` değişir, worker oto
 ---
 
 ## 6. Yapılacaklar (worker'a özel)
+
+**Kota takibi düzeltildi (kullanıcı: "günde api'ye tahmini kaç istek atıyoruz" sorusu üzerine
+bulundu):** `recordApiRequest()` eskiden SADECE `live.ts`'in kendi çağrısında tetikleniyordu —
+`syncTeams`/`syncFixtures`/`syncStandings`'in Highlightly istekleri (günde ~16 istek) kota
+sayacına HİÇ yansımıyordu. Bu, canlı döngünün adaptif bütçe hesaplamasını (`computeIntervalSeconds`)
+o gün zaten harcanan housekeeping isteklerinden habersiz bırakıyordu — yoğun bir maç gününde
+gerçek toplam Highlightly'nin 100/gün ücretsiz limitini AŞABİLİRDİ (sayaç görmese de). Artık
+`recordApiRequest()` tüm çağrıların ortak geçtiği `highlightlyApi.ts`'nin `call()` fonksiyonunda
+— her gerçek HTTP isteği (sayfalama dahil) sayılıyor, hangi fonksiyon çağırırsa çağırsın.
+Ayrıca `syncTeams`+`syncFixtures` artık tek bir `fetchLeagueFixtures()` sonucunu paylaşıyor
+(eskiden ikisi ayrı ayrı aynı listeyi çekiyordu, 4→2 istek) ve standings'in zamanlayıcı-bazlı
+senkronu 2 saatten 8 saate genişletildi (artık sadece güvenlik ağı, asıl tazelik maç-bitince-
+hemen-yenile'den geliyor — bkz. §3). **Yeni tahmini günlük istek sayısı**: maçsız gün ~3-5,
+yoğun maç günü housekeeping (~5) + canlı döngü (kalan bütçeye göre adaptif, artık gerçekten
+100'ün altında kalacak şekilde kendini ayarlıyor).
 
 **Tamamlanan (worker tarafı artık production'da tam çalışır durumda):**
 - GitHub reposu oluşturuldu (`ayildirim12/tahmin-ligi`, **public**), kod push edildi.
