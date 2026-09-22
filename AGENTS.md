@@ -171,12 +171,23 @@ dosyasındaki değişiklikleri otomatik hot-reload eder.
 
 ## 7. Yapılacaklar (proje geneli, öncelik sırasıyla)
 
-1. **Highlightly hesabı + GitHub kurulumu**: detay için `worker/AGENTS.md` §4 ve §6 — anahtar/lig
-   ID alındıktan sonra TÜM §4 doğrulama maddelerini test edip workflow'u yeniden etkinleştirmeyi
-   unutma (SADECE kullanıcı hesap açabilir; doğrulama + kod tarafı burada yapılabilir).
-2. **Deploy**: `npm run build` (bu `.env.production.local`'ı otomatik kullanır) →
-   `firebase deploy --only hosting --project=production` → Firebase Console → Authentication →
-   Authorized domains'e prod Hosting alan adını ekle (Google girişinin prod'da çalışması için).
+**Highlightly kurulumu ve prod deploy TAMAMLANDI** (worker aktif çalışıyor, site
+`https://tahmin-ligi-sl2026.web.app` adresinde canlı — bkz. §6 ve `worker/AGENTS.md` §6).
+Landing page Google marka kurallarına uygun giriş butonu + özgün görsel kimlikle yenilendi
+(`src/pages/LandingPage.tsx`, `src/components/icons/GoogleIcon.tsx`).
+
+Kalan, hepsi opsiyonel/polish niteliğinde (zorunlu değil):
+
+1. **JS bundle code-split** — `dist/assets/index-*.js` ~1MB, `dynamic import()` ile bölünebilir
+   (detay `src/AGENTS.md` §6).
+2. **Hesap silme "blocked" akışının görsel testi** — çoklu üyeli topluluğun tek sahibiyken
+   engellenmesi şu ana kadar sadece kod incelemesiyle doğrulandı, gerçek 2. kullanıcıyla
+   denenmedi.
+3. **"Wins" tie-break semantiği** — şu an "eğilim-veya-üstü tahmin sayısı"; gerçek Kicktipp
+   "haftalık kazanma" anlamına çevrilmek istenirse hem `worker/finalize.ts` hem leaderboard
+   gösterimi değişmeli (detay `worker/AGENTS.md` §6). Kullanıcı bunu şu ana kadar istemedi.
+4. **İlk gerçek CANLI maçta gözle doğrulama** — `pollLiveScores()` ve `LeaderboardMatrix`'in
+   LIVE/HT geçişleri prod'da hiç görülmedi (testler sadece "Not started"/"Finished" ile yapıldı).
 
 ---
 

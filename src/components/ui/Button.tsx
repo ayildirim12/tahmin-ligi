@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes } from 'react'
 import { cn } from '@/lib/cn'
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'destructive'
+type Variant = 'primary' | 'secondary' | 'ghost' | 'destructive' | 'google'
 type Size = 'sm' | 'md' | 'lg'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -14,6 +14,10 @@ const variantClasses: Record<Variant, string> = {
   secondary: 'bg-surface-muted text-foreground hover:bg-border',
   ghost: 'bg-transparent text-foreground hover:bg-surface-muted',
   destructive: 'bg-destructive text-destructive-foreground hover:opacity-90',
+  // Follows Google's official sign-in button guidelines (light/dark neutral surface,
+  // not the app's brand color) — recoloring the Google button breaks their brand rules.
+  google:
+    'border border-[#747775] bg-white text-[#1f1f1f] shadow-sm hover:bg-[#f7f8f8] dark:border-[#8e918f] dark:bg-[#131314] dark:text-[#e3e3e3] dark:hover:bg-[#1e1f20]',
 }
 
 const sizeClasses: Record<Size, string> = {
