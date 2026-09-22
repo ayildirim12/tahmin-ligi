@@ -40,23 +40,37 @@ export function useGameweekPredictions(communityId: string) {
     const lockedQuery = query(predictionsCol(communityId), where('locked', '==', true))
     const mineQuery = query(predictionsCol(communityId), where('uid', '==', user.uid))
 
-    const unsubLocked = onSnapshot(lockedQuery, (snap) => {
-      setByKey((prev) => {
-        const next = { ...prev }
-        for (const d of snap.docs) next[d.id] = mapPrediction(d.id, d.data())
-        return next
-      })
-      setLockedLoaded(true)
-    })
+    const unsubLocked = onSnapshot(
+      lockedQuery,
+      (snap) => {
+        setByKey((prev) => {
+          const next = { ...prev }
+          for (const d of snap.docs) next[d.id] = mapPrediction(d.id, d.data())
+          return next
+        })
+        setLockedLoaded(true)
+      },
+      (error) => {
+        console.error('useGameweekPredictions: locked listener failed', error)
+        setLockedLoaded(true)
+      },
+    )
 
-    const unsubMine = onSnapshot(mineQuery, (snap) => {
-      setByKey((prev) => {
-        const next = { ...prev }
-        for (const d of snap.docs) next[d.id] = mapPrediction(d.id, d.data())
-        return next
-      })
-      setMineLoaded(true)
-    })
+    const unsubMine = onSnapshot(
+      mineQuery,
+      (snap) => {
+        setByKey((prev) => {
+          const next = { ...prev }
+          for (const d of snap.docs) next[d.id] = mapPrediction(d.id, d.data())
+          return next
+        })
+        setMineLoaded(true)
+      },
+      (error) => {
+        console.error('useGameweekPredictions: mine listener failed', error)
+        setMineLoaded(true)
+      },
+    )
 
     return () => {
       unsubLocked()

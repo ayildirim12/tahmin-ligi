@@ -1,6 +1,7 @@
 import { Moon, ScrollText, Settings, Sun } from 'lucide-react'
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
+import { BrandLink } from './BrandLink'
 import { CommunitySwitcher } from './CommunitySwitcher'
 import { GameRulesDialog } from './GameRulesDialog'
 import { communityTabs, profileTab } from './tabs'
@@ -25,7 +26,8 @@ export function NavBar({ communityId, community, membership }: NavBarProps) {
     <header className="sticky top-0 z-40 border-b border-border bg-surface/90 backdrop-blur supports-[backdrop-filter]:bg-surface/70">
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-4">
         <div className="flex items-center gap-1 overflow-hidden">
-          {communityId ? (
+          <BrandLink className="shrink-0 px-1.5" />
+          {communityId && (
             <>
               <CommunitySwitcher activeCommunityId={communityId} />
               {community && membership && (
@@ -34,8 +36,6 @@ export function NavBar({ communityId, community, membership }: NavBarProps) {
                 </IconButton>
               )}
             </>
-          ) : (
-            <span className="px-2.5 text-sm font-semibold">Tahmin Ligi</span>
           )}
         </div>
 

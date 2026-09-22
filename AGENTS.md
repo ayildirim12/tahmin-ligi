@@ -66,7 +66,7 @@ React SPA ──onSnapshot──> Firestore (Spark) <──Admin SDK (kuralları
 | `communities/{id}/members/{uid}` | worker (puan alanları), kullanıcı (profil alanları) | `role`, `totalPoints`, `totalPredictions`, `winsCount` sadece worker |
 | `communities/{id}/predictions/{uid}_{matchId}` | kullanıcı (kendi tahmini) | **topluluk bazlı**, global değil — bkz. aşağı |
 | `inviteCodes/{code}` | sahip | `get` var, `list` yok (numaralandırma engellenir) |
-| `teams/{id}` | worker | `apiTeamId, name, shortName, crestUrl` |
+| `teams/{id}` | worker | `apiTeamId, name, shortName` (crest YOK — bkz. §9, logolar API'den değil `public/crests/{id}.png`'den) |
 | `matches/{id}` | worker | global, tüm topluluklarda ortak |
 | `standings/superlig` | worker | tek doküman, tüm tablo |
 | `meta/config` | worker | `season, currentGameweek, lastFixtureSyncAt, lastStandingsSyncAt` |
@@ -213,3 +213,30 @@ başlatın.
 - `~/Projects/superlig-tahmin` diye **alakasız** bir başka proje var (kişisel kullanım için
   ML tabanlı skor tahmin sistemi, Python). Bu projeyle **hiçbir ilgisi yok**, karıştırmayın.
 - UI metni Türkçe, kod/yorumlar İngilizce (mevcut konvansiyon, her iki tarafta da geçerli).
+- **Takım logoları artık local dosya (`public/crests/{teamId}.png`), API'den değil.** Bu,
+  daha önceki bilinçli kararın (Highlightly `team.logo`'ya hotlink, telif/yeniden-dağıtım
+  riskinden kaçınmak için) **kullanıcı talebiyle tersine çevrilmiş hali** — Highlightly'nin
+  logoları güncel değildi (ör. isim/amblem değiştiren kulüpler eski logoyu döndürüyordu).
+  18 kulübün güncel resmi amblemi Wikipedia/Wikimedia Commons'tan indirilip `{teamId}.png`
+  olarak (dosya adı = Firestore doc id = Highlightly numeric team id) kondu; `TeamCrest.tsx`
+  artık Firestore'da hiç `crestUrl` alanına bakmıyor, direkt `/crests/${team.id}.png`
+  path'ini kullanıyor (resim yoksa/kırıksa `onError` ile baş harfli daireye düşüyor).
+  Worker (`worker/src/teams.ts`) artık `crestUrl` yazmıyor. **Bilinen ödün:** bu, kulüp
+  amblemlerini ticari olmayan bir hobi projesinde barındırmak — yaygın pratik ama saf
+  copyright/marka riski sıfır değil; kullanıcı bilerek bu tercihi yaptı. Yeni bir takım
+  eklenirse (küme değişikliği vb.) `public/crests/{yeniId}.png` elle eklenmeli, otomatik
+  gelmez.
+- **Takım `name`/`shortName` de artık API'den güvenilir okunmuyor — `worker/src/teamOverrides.ts`
+  ile hardcode override ediliyor.** Sebep: Highlightly bazı kulüpleri Türkçe karaktersiz
+  döndürüyor ("Besiktas", "Fenerbahce", "Goztepe", "Genclerbirligi") ve en az iki kulüpte isim
+  değişikliğinden sonra eski ismi döndürüyordu ("Gazişehir Gaziantep" → gerçek güncel isim
+  "Gaziantep FK"; "Yeni Çorumspor" → "Çorum FK") — crest URL'lerindeki güncel-olmama sorunuyla
+  aynı kök neden. Eski `shortName` üretimi de (`name.slice(0,3).toUpperCase()`) JS'in
+  `toUpperCase()`'ının Türkçe noktalı İ kuralını bilmemesinden bozuktu (ör. "Rizespor" →
+  "RIZ", doğrusu "RİZ"). `TEAM_OVERRIDES` 18 kulübün hepsini elle doğru isim + tanınır
+  kısaltmayla kapsıyor (büyük 4 için gerçek yayın kısaltmaları: GS/FB/BJK/TS). `syncTeams()`
+  bilinen bir id için override'ı kullanıyor, bilinmeyen (yeni) bir takım için API'nin
+  ham/mekanik türetilmiş değerine düşüyor. **Bu değişiklik prod Firestore'a worker koduyla
+  DEĞİL, tek seferlik bir admin script'iyle anında uygulandı** (API key yerelde yoktu) —
+  worker'ın kendisi bir sonraki gerçek çalıştırmasında zaten aynı override'ları yazacağı için
+  idempotent, fark yaratmaz.

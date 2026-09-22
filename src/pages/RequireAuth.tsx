@@ -10,7 +10,7 @@ export function RequireAuth() {
 
   if (!user) {
     const redirect = encodeURIComponent(location.pathname + location.search)
-    return <Navigate to={`/?redirect=${redirect}`} replace />
+    return <Navigate to={`/login?redirect=${redirect}`} replace />
   }
 
   return <Outlet />

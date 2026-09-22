@@ -21,7 +21,6 @@ export function useTeams() {
           apiTeamId: data.apiTeamId,
           name: data.name,
           shortName: data.shortName,
-          crestUrl: data.crestUrl,
         }
       }
       cachedTeams = map

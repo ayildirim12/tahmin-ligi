@@ -31,9 +31,21 @@ function actualScore(match: Match): { homeGoals: number; awayGoals: number } | n
 /**
  * `prediction` should already be `null` when the security rules would hide
  * it (not locked and not the viewer's own) — see useGameweekPredictions.
+ *
+ * `isOwn` marks the viewer's own row: nothing is ever genuinely "hidden" from
+ * yourself, so a null prediction there means "you haven't predicted this
+ * match yet" (shown as a dash, inviting you to go predict), never the
+ * padlock — that's reserved for a still-open match on someone ELSE's row,
+ * where a null prediction is ambiguous (hidden by the privacy rule; they may
+ * or may not have actually predicted).
  */
-export function computeCellState(match: Match, prediction: Prediction | null): CellState {
+export function computeCellState(
+  match: Match,
+  prediction: Prediction | null,
+  isOwn = false,
+): CellState {
   if (prediction === null) {
+    if (isOwn) return { kind: 'no-prediction' }
     return match.status === 'SCHEDULED' ? { kind: 'hidden' } : { kind: 'no-prediction' }
   }
 

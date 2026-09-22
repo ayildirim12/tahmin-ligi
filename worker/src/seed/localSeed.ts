@@ -28,7 +28,6 @@ async function main() {
       apiTeamId: Number(team.id),
       name: team.name,
       shortName: team.shortName,
-      crestUrl: '',
     })
   }
   await teamBatch.commit()

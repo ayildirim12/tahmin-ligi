@@ -47,7 +47,7 @@ export function JoinCommunityPage() {
   }
 
   if (joinedCommunityId) {
-    return <Navigate to={`/c/${joinedCommunityId}/puan-durumu`} replace />
+    return <Navigate to={`/${joinedCommunityId}/puan-durumu`} replace />
   }
 
   if (status === 'resolving') return <FullScreenSpinner />

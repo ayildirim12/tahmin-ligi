@@ -37,10 +37,17 @@ export function useGameweekMatches(gameweek: number | null) {
 
     setLoading(true)
     const q = query(matchesCol, where('gameweek', '==', gameweek), orderBy('kickoffAt', 'asc'))
-    const unsubscribe = onSnapshot(q, (snap) => {
-      setMatches(snap.docs.map((d) => mapMatch(d.id, d.data())))
-      setLoading(false)
-    })
+    const unsubscribe = onSnapshot(
+      q,
+      (snap) => {
+        setMatches(snap.docs.map((d) => mapMatch(d.id, d.data())))
+        setLoading(false)
+      },
+      (error) => {
+        console.error('useGameweekMatches: listener failed', error)
+        setLoading(false)
+      },
+    )
     return unsubscribe
   }, [gameweek])
 

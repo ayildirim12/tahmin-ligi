@@ -19,7 +19,8 @@ tekrarlanmıyor.
 - **Radix UI**: sadece `@radix-ui/react-dialog` (→ `src/components/ui/Dialog.tsx` wrapper) ve
   `@radix-ui/react-dropdown-menu` (→ `CommunitySwitcher.tsx`) kullanılıyor. Kullanılmayan
   `alert-dialog`/`tabs`/`toast`/`toggle` paketleri kaldırıldı (bkz. değişiklik geçmişi).
-- **lucide-react** ikonlar, **nanoid** (davet kodu üretimi, `src/lib/inviteCode.ts`).
+- **lucide-react** ikonlar, **nanoid** (davet kodu üretimi `src/lib/inviteCode.ts`; topluluk ID
+  üretimi `src/lib/communityId.ts` — bkz. §5).
 - **Vitest** + jsdom (`environment: 'jsdom'`, vite.config.ts'de tanımlı) + `@firebase/rules-unit-testing`.
 
 ---
@@ -41,18 +42,24 @@ src/
 │                     useMembers, useGameweekMatches, useGameweekPredictions (İKİ SORGU PATTERN'İ,
 │                       bkz. §4), useMyPrediction, useStandings, useTeams, useConfig
 ├── components/
-│   ├── layout/        NavBar, AppShell, BottomTabBar, CommunitySwitcher, GameRulesDialog, tabs.ts
+│   ├── layout/        NavBar, AppShell, BottomTabBar, CommunitySwitcher, GameRulesDialog,
+│   │                  BrandLink (tıklanabilir "Tahmin Ligi" logosu → `/`, bkz. §5), tabs.ts
 │   ├── community/      CommunitySettingsDialog, InviteLinkCard, MemberList
 │   ├── standings/       StandingsTable, TeamCrest (bkz. §3 — piksel bazlı boyutlandırma), FormBadge, ZoneLegend
-│   ├── leaderboard/     LeaderboardMatrix, LeaderboardSeasonTable, MatchColumnHeader,
-│   │                    PredictionCell, SortableHeaderCell, GameweekSwitcher
+│   ├── leaderboard/     LeaderboardMatrix (artık haftalık VE sezon toplamı tek tabloda — bkz. §5),
+│   │                    MatchColumnHeader, PredictionCell, SortableHeaderCell, GameweekSwitcher
 │   ├── predictions/      FixtureCard (maç durumu rozeti + manuel skor girişi), ScoreInput
-│   └── ui/                Button, Card, Dialog, Input, Switch (bkz. §3 — inline style ile
-│                          konumlandırma), Spinner, IconButton
-├── pages/            LandingPage, CommunityHubPage, JoinCommunityPage, CommunityLayout,
-│                     StandingsTab, LeaderboardTab, PredictionCenterTab, ProfileTab, RequireAuth
-├── lib/               cn (clsx wrapper), time, inviteCode, lastCommunity, liveScoring
-│                     (computeCellState — canlı hücre durumu hesaplama), standingsZones
+│   └── ui/                Button (bkz. §3 — `google` varyantı), Card, Dialog, Input, Switch
+│                          (bkz. §3 — inline style ile konumlandırma), Spinner, IconButton
+├── pages/            LandingPage (GİRİŞ GEREKTİRMEZ — çıkışlıyken marketing kart, girişliyken
+│                     DOĞRUDAN `<CommunityHubPage/>` render eder (topluluklarını görürsün, ayrı
+│                     bir tıklama gerekmez), bkz. §5), LoginPage (/login, tek Google girişi
+│                     ekranı), CommunityHubPage, JoinCommunityPage, CommunityLayout, StandingsTab,
+│                     LeaderboardTab, PredictionCenterTab, CalendarTab (bkz. §5), ProfileTab,
+│                     RequireAuth
+├── lib/               cn (clsx wrapper), time, inviteCode, communityId (bkz. §5),
+│                     lastCommunity, liveScoring (computeCellState — canlı hücre durumu
+│                     hesaplama), standingsZones
 └── test/              firestore.rules.test.ts
 ```
 
@@ -123,18 +130,98 @@ Kurallar dosyasının genel mantığı `../AGENTS.md §5`'te — burada bunun CL
 ## 5. Şu ana kadar yapılan ve doğrulanan (frontend)
 
 - Google girişi, topluluk oluşturma/katılma/ayarlar (davet linki paylaşma, üye çıkarma, ayrılma,
-  tek-üyeyken silme), Süper Lig puan durumu (zon renkleri, form ikonları), haftalık + sezon
-  toplamı sıralama (sıralanabilir T/W/P), Tahmin Merkezi (manuel skor girişi — **+/- stepper
-  YOK**, kullanıcı doğrudan rakam yazıyor, `ScoreInput.tsx`), maç saatine kadar düzenlenebilir/maç
-  başlayınca kilitlenir (hem UI hem kural katmanında), Oyun Kuralları penceresi (navbar'da,
-  `GameRulesDialog.tsx`).
+  tek-üyeyken silme), Süper Lig puan durumu (zon renkleri — güncel TFF 2026-27 UEFA katılım
+  sırasına göre, bkz. `standingsZones.ts`, form ikonları), Tahmin Merkezi (manuel skor girişi —
+  **+/- stepper YOK**, kullanıcı doğrudan rakam yazıyor, `ScoreInput.tsx`), maç saatine kadar
+  düzenlenebilir/maç başlayınca kilitlenir (hem UI hem kural katmanında), Oyun Kuralları penceresi
+  (navbar'da, `GameRulesDialog.tsx`).
+- **Sıralama artık TEK tablo** (`LeaderboardMatrix.tsx`): maç-bazlı hücreler + "Hafta" (o
+  gameweek'in toplamı) + "Toplam" (sezon) yan yana. Önceki "Bu Hafta / Sezon Toplamı" sekme
+  ayrımı ve ayrı `LeaderboardSeasonTable.tsx` kaldırıldı (kullanıcı isteğiyle birleştirildi).
+- **Giriş akışı yeniden tasarlandı** (kullanıcı isteğiyle): `/` (`LandingPage.tsx`) artık **giriş
+  gerektirmeyen, her zaman erişilebilir bir ana menü** — "Topluluk oluştur" (`/hub`) ve "Profilim"
+  (`/profil`) butonları, ikisi de `RequireAuth` altında. Google girişi ekranı ayrı bir sayfaya
+  taşındı: **`/login`** (`LoginPage.tsx`, eski `LandingPage`'in giriş kartıyla aynı). `RequireAuth`
+  artık `/?redirect=...` değil **`/login?redirect=...`**'a yönlendiriyor. Kimliği doğrulanmamış biri
+  `/hub` veya `/profil`'e (doğrudan ya da ana menüdeki butonlarla) gitmeye çalışırsa otomatik
+  `/login`'e düşer, giriş sonrası `redirect` parametresindeki hedefe döner. Her sayfada geri
+  dönüşü kolaylaştırmak için sol üstte tıklanabilir bir **`BrandLink`** ("Tahmin Ligi" logosu →
+  `/`) var — `LoginPage`'de kendi başına, `NavBar`'da HER ZAMAN (topluluk aktifken bile,
+  `CommunitySwitcher`'ın solunda; dar ekranda metin gizlenip sadece ikon kalıyor, bkz. §3'teki
+  gibi bir responsive-metin pattern'i) gösteriliyor.
+- **`LandingPage` (`/`) girişliyken artık ikinci bir "tıkla → topluluklarını gör" adımı değil**:
+  `useAuth()` ile `user` doluysa doğrudan `<CommunityHubPage/>` render ediyor (aynı bileşen,
+  `/hub`'da da kullanılıyor — iki route, tek kaynak, kod tekrarı yok). Çıkışlıyken hâlâ eski
+  marketing kart (Topluluk oluştur / Profilim, ikisi de `/hub`→`/login` ya da `/profil`→`/login`
+  zincirinden geçiyor).
+- **Topluluk ID'leri artık Firestore'un çirkin 20 karakterlik auto-ID'si değil, isimden türeyen
+  okunabilir bir slug**: `createCommunity` artık `src/lib/communityId.ts`'deki
+  `generateCommunityId(name)` ile üretilen `{slug}-{5-karakter-rastgele-suffix}` biçiminde bir ID
+  kullanıyor (ör. "Ofis Şampiyonası" → `ofis-sampiyonasi-mmbex`) — `/{communityId}/...`
+  URL'sinin "açıkça bir veritabanı ID'si gibi görünmesin" istendiği için (kullanıcı: "domain de
+  firebase id gözüksün istemem", sonra: "topluluk adı/puan-tablosu olsun"). Türkçe karakterler
+  transliterate ediliyor (ş→s, ğ→g, vb.), suffix her zaman ekleniyor (aynı isimli iki topluluk
+  çakışmasın diye) — yani URL asla salt "temiz" bir isim değil, hep `-xxxxx` son eki taşıyor;
+  bu bilinçli bir tercih (id, Firestore doc id olarak da kullanılıyor, gerçek benzersizlik şart).
+  **Sadece YENİ oluşturulan topluluklar için geçerli** — eski topluluklar (bu oturumdan önce
+  oluşturulanlar) hâlâ eski Firestore auto-ID'sini taşıyor, geriye dönük migrasyon YAPILMADI
+  (mevcut kullanıcı verisini bozma riski / istenmedi).
+- **Topluluk route'undan `/c/` öneki tamamen kaldırıldı** (kullanıcı: "o c de olmasın işte
+  url de") — `router.tsx`'te `path: '/c/:communityId'` → `path: '/:communityId'` oldu, artık
+  DOĞRUDAN kök seviyede bir dinamik segment. Bu, `/hub`, `/login`, `/profil`, `/join/:code` gibi
+  statik route'larla ÇAKIŞMAZ çünkü React Router route ranking'i statik segmentleri dinamik
+  `:param`'dan her zaman önce dener (aynı üst route'un kardeşleri olarak tanımlı oldukları
+  sürece) — ayrıca topluluk ID'leri her zaman rastgele bir suffix taşıdığı için (bkz. yukarı)
+  "hub"/"profil"/"login"/"join" ile birebir çakışması pratikte imkansız. Tüm `/c/${id}/...`
+  inşa noktaları (`tabs.ts`, `CommunitySwitcher`, `CreateCommunityDialog`,
+  `CommunityHubPage`, `JoinCommunityPage`) `/${id}/...`'e güncellendi.
+- **Gerçek 404 sayfası** (`NotFoundPage.tsx`, `BrandLink` + "Sayfa bulunamadı" + "Ana sayfaya
+  dön" butonu): önceden `*` route'u ve geçersiz/erişimsiz topluluk ID'si (`CommunityLayout`)
+  kullanıcıyı sessizce `/`'e ya da `/hub`'a yönlendiriyordu — kullanıcı bunu "erişilemeyen
+  sayfa ... sayfa bulunamadı, ana sayfaya dön olsun" diye özellikle istedi çünkü sessiz
+  yönlendirme neyin ters gittiğini belli etmiyordu. Tek segment'lik geçersiz bir yol (ör.
+  `/ornek`) route yapısı gereği `/:communityId`'ye düşüyor, `CommunityLayout` community'yi
+  bulamayınca (ya da üye değilsen) artık `<NotFoundPage/>` render ediyor — asıl `*` catch-all
+  sadece çok-segmentli/tamamen tanınmayan yollar için devreye giriyor, ikisi de aynı bileşeni
+  kullanıyor.
+- **`computeCellState` artık bir `isOwn` parametresi alıyor** (`liveScoring.ts`) — kullanıcı:
+  "girdiğim tahmin skoru burada gözüksün ... asıl maç sonucu ve kaç puan aldığım gözüksün".
+  Kod zaten tahmini (`pending`) ve sonuç+puanı (`scored`) doğru gösteriyordu; asıl sorun KENDİ
+  satırında henüz tahmin GİRMEDİĞİN, hâlâ açık (SCHEDULED) bir maçın da diğer üyelerin gizlilik
+  kuralıyla gizlenen hücreleriyle AYNI kilit ikonunu göstermesiydi — kafa karıştırıcıydı çünkü
+  kendi tahminin senden asla "gizli" değil, sadece henüz girilmemiş. `LeaderboardMatrix.tsx`
+  artık `member.uid === user?.uid` olan satır için `isOwn=true` geçiyor; bu durumda `prediction
+  === null` her zaman `no-prediction` (tire) döner, `hidden` (kilit) ASLA — kilit artık sadece
+  BAŞKALARININ henüz kilitlenmemiş hücrelerinde görünüyor (orada gerçekten belirsiz: tahmin
+  etmiş olabilirler, edememiş olabilirler, gizlilik kuralı gereği bilemiyoruz).
+- **`PredictionCell.tsx`'in `pending` hücresi artık bare "1-0" değil, üstte küçük "Tahmin"
+  etiketiyle** (kullanıcı: "1-0 yazmaktansa ... böyle yazınca sanki maç öyle bitti oluyor" —
+  etiketsiz skor, maç henüz oynanmamışken bile bitmiş gibi okunuyordu). `scored` hücresine de
+  `title` tooltip eklendi ("Tahmin: H-A / Sonuç: {tier etiketi} / Kazanılan puan: N") — dar
+  matris hücresinin (72px sütun) kompakt görünümünü bozmadan tam detay hover'da görünüyor.
+- **Topluluk ID migrasyon script'i** (`worker/scratch/migrateCommunityIds.ts`, gitignored):
+  eski 20-karakterlik Firestore auto-ID'li toplulukları (`/^[A-Za-z0-9]{20}$/` deseni) yeni
+  slug formatına taşıyor — community dokümanını + `members`/`predictions` alt koleksiyonlarını
+  yeni ID'ye kopyalar, `inviteCodes/{code}.communityId`'yi ve her üyenin
+  `users/{uid}.communityIds` dizisini günceller, kopya doğrulandıktan SONRA eski dokümanları
+  siler. **Emulator'da çalıştırılıp doğrulandı** (abb, Test Topluluğu başarıyla taşındı).
+  **Production'da ÇALIŞTIRILAMADI** — auto mode classifier bunu "Cloud Storage Mass Delete"
+  olarak işaretleyip engelledi (silme adımı içerdiği için). Kullanıcıdan açık onay/manuel
+  çalıştırma gerekiyor; script hazır ve test edilmiş durumda, sadece izin bekliyor.
+- **Yeni "Takvim" sekmesi** (`CalendarTab.tsx`, `/{id}/takvim`, `communityTabs`'a eklendi):
+  `GameweekSwitcher` ile herhangi bir haftaya gidip o haftanın TÜM maçlarını (geçmiş/canlı/
+  gelecek) salt-okunur görebiliyorsun — sonuç + varsa kendi tahminin ve kazandığın puan
+  (`computeCellState` yeniden kullanılıyor, Tahmin Merkezi'ndeki `ScoreInput` YOK, düzenleme
+  içermiyor). `BottomTabBar`'daki sekme sayısı artık sabit değil (4 topluluk sekmesi + Profil =
+  5) — bu yüzden `grid-cols-4` hardcode'u kaldırıldı, `style={{ gridTemplateColumns: ... }}`
+  inline style'a geçildi (dinamik Tailwind class ASLA template literal ile kurulmaz — bkz. §3).
 - **Canlı puanlama uçtan uca test edildi**: emulator'da bir maç elle 1-1 → 2-0 → bitti 2-1 yapıldı,
   arayüz sayfa yenilemeden her aşamada doğru puan/renk gösterdi (`src/lib/liveScoring.ts` →
   `computeCellState`, `LeaderboardMatrix`/`PredictionCell` bunu tüketir).
 - Karanlık mod, mobil genişlik (gerçek 390px görünümde tek tek sayfa/dialog kontrol edildi),
-  takım logoları (`TeamCrest` — API-Football `crestUrl`'üne hotlink, veri yoksa baş harfli daire
-  fallback; logo YEREL DOSYA OLARAK BULUNDURULMUYOR, bilinçli — telif/yeniden dağıtım riskini
-  önlemek için).
+  takım logoları (`TeamCrest` — **artık local `public/crests/{team.id}.png`'den**, veri
+  yoksa/kırıksa baş harfli daire fallback; API'ye hotlink KARARINDAN VAZGEÇİLDİ çünkü
+  Highlightly'nin logoları güncel değildi — detay `../AGENTS.md §9`).
 - **Bu oturumda bulunup düzeltilen 4 UI bug'ı**:
   1. Karanlık mod anahtarı ters duruyordu → `Switch.tsx` (bkz. §3)
   2. `FixtureCard`'da canlı/biten maçın gerçek skoru hiç gösterilmiyordu → `MatchStatusBadge`

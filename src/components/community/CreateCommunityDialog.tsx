@@ -29,7 +29,7 @@ export function CreateCommunityDialog({
       const communityId = await createCommunity(user, name.trim())
       onOpenChange(false)
       setName('')
-      navigate(`/c/${communityId}/puan-durumu`)
+      navigate(`/${communityId}/puan-durumu`)
     } catch {
       setError('Topluluk oluşturulamadı. Lütfen tekrar deneyin.')
     } finally {

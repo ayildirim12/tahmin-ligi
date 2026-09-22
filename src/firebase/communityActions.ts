@@ -25,6 +25,7 @@ import {
   predictionsCol,
 } from './firestore'
 import { generateInviteCode } from '@/lib/inviteCode'
+import { generateCommunityId } from '@/lib/communityId'
 
 /**
  * Community creation is three SEQUENTIAL writes (not one batch) so that each
@@ -37,7 +38,7 @@ import { generateInviteCode } from '@/lib/inviteCode'
  * this app's scale; the hub page could self-heal this later if it ever comes up.
  */
 export async function createCommunity(user: User, name: string): Promise<string> {
-  const communityRef = doc(communitiesCol)
+  const communityRef = doc(communitiesCol, generateCommunityId(name))
   const inviteCode = generateInviteCode()
 
   await setDoc(communityRef, {

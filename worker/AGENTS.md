@@ -223,6 +223,20 @@ değişikliği gerekmez — sadece `src/shared/scoring.ts` değişir, worker oto
    daha gözle izlemek iyi olur — şu ana kadarki testler sadece "Not started"/"Finished" durumlarıyla
    yapıldı (test sırasında canlı maç yoktu), LIVE/HT geçişleri prod'da hiç görülmedi.
 
+**Bilinen platform kısıtı — GitHub Actions `schedule` cron'u bazen saatlerce ateşlenmiyor:**
+2026-09-22'de gözlemlendi: workflow "active", kod/secrets/API key tamamen sağlam (elle
+tetiklenince 44sn'de sorunsuz çalıştı), ama zamanlanmış (`schedule`) tetikleyici 05:05→09:50 UTC
+arası (~4.5 saat) **hiç** ateşlenmedi. Bu bizim kodumuzdaki bir hata DEĞİL — GitHub'ın kendi
+platform kısıtı: ücretsiz/public repo'larda yoğunluk dönemlerinde `schedule` event'i gecikebiliyor,
+hatta bazen tamamen atlanabiliyor (GitHub'ın kendi dokümantasyonu bunu açıkça belirtiyor, kesin
+zamanlama garantisi vermiyor). **Gerçek risk**: bu gecikme tam bir maç sırasında olursa canlı
+skorlar saatlerce güncellenmez. "Her şey ücretsiz" kısıtı altında bunu %100 çözecek ücretsiz bir
+yöntem yok (harici bir cron-ping servisi eklemek ayrı bir bağımlılık + kendi güvenilirlik riskini
+getirir, tercih edilmedi). Bir agent/kullanıcı bu sorunla tekrar karşılaşırsa: önce
+`gh run list --workflow=sync.yml` ile son çalıştırma zamanına bak, gecikme varsa `gh workflow run
+sync.yml` ile elle tetikle (pipeline'ın kendisi neredeyse her zaman sağlamdır) — kod aramaya
+gerek yok, bu bilinen bir GitHub platform davranışı.
+
 ---
 
 ## 7. Yerelde çalıştırma / test

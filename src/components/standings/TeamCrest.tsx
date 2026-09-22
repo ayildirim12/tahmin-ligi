@@ -14,7 +14,7 @@ export function TeamCrest({
   const [errored, setErrored] = useState(false)
   const style = { width: size, height: size }
 
-  if (!team || errored || !team.crestUrl) {
+  if (!team || errored) {
     return (
       <div
         className={cn(
@@ -30,7 +30,9 @@ export function TeamCrest({
 
   return (
     <img
-      src={team.crestUrl}
+      // Crests are bundled locally (public/crests/{teamId}.png), not pulled from the
+      // live football API — the API's logo URLs turned out to be outdated/stale.
+      src={`/crests/${team.id}.png`}
       alt=""
       className={cn('shrink-0 object-contain', className)}
       style={style}

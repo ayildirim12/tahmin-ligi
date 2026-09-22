@@ -12,15 +12,22 @@ export function useConfig() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(configDoc(), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data()
-        setConfig({ season: data.season, currentGameweek: data.currentGameweek })
-      } else {
-        setConfig(null)
-      }
-      setLoading(false)
-    })
+    const unsubscribe = onSnapshot(
+      configDoc(),
+      (snap) => {
+        if (snap.exists()) {
+          const data = snap.data()
+          setConfig({ season: data.season, currentGameweek: data.currentGameweek })
+        } else {
+          setConfig(null)
+        }
+        setLoading(false)
+      },
+      (error) => {
+        console.error('useConfig: listener failed', error)
+        setLoading(false)
+      },
+    )
     return unsubscribe
   }, [])
 

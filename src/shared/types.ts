@@ -16,7 +16,6 @@ export interface Team {
   apiTeamId: number
   name: string
   shortName: string
-  crestUrl: string
 }
 
 export interface Match {

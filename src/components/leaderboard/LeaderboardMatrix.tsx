@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { MatchColumnHeader } from './MatchColumnHeader'
 import { PredictionCell } from './PredictionCell'
 import { SortableHeaderCell } from './SortableHeaderCell'
+import { useAuth } from '@/contexts/AuthContext'
 import { computeCellState } from '@/lib/liveScoring'
 import { predictionKey } from '@/hooks/useGameweekPredictions'
 import type { CommunityMember, Match, Prediction, Team } from '@/shared/types'
@@ -17,14 +18,16 @@ export function LeaderboardMatrix({
   predictionsByKey: Record<string, Prediction>
   teams: Record<string, Team>
 }) {
+  const { user } = useAuth()
   const [sortDesc, setSortDesc] = useState(true)
 
   const rows = useMemo(() => {
     return members
       .map((member) => {
+        const isOwn = member.uid === user?.uid
         const cells = matches.map((match) => {
           const prediction = predictionsByKey[predictionKey(member.uid, match.id)] ?? null
-          return { match, state: computeCellState(match, prediction) }
+          return { match, state: computeCellState(match, prediction, isOwn) }
         })
         const weekPoints = cells.reduce(
           (sum, c) => sum + (c.state.kind === 'scored' ? c.state.points : 0),
@@ -33,7 +36,7 @@ export function LeaderboardMatrix({
         return { member, cells, weekPoints }
       })
       .sort((a, b) => (sortDesc ? b.weekPoints - a.weekPoints : a.weekPoints - b.weekPoints))
-  }, [members, matches, predictionsByKey, sortDesc])
+  }, [members, matches, predictionsByKey, sortDesc, user?.uid])
 
   return (
     <div className="overflow-x-auto rounded-xl border border-border">
@@ -56,8 +59,11 @@ export function LeaderboardMatrix({
               active
               direction={sortDesc ? 'desc' : 'asc'}
               onClick={() => setSortDesc((d) => !d)}
-              className="w-14 pr-3"
+              className="w-14"
             />
+            <th className="w-14 py-2.5 pr-3 text-center font-medium text-muted-foreground">
+              Toplam
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -89,7 +95,10 @@ export function LeaderboardMatrix({
                   </div>
                 </td>
               ))}
-              <td className="py-2 pr-3 text-center text-base font-bold">{weekPoints}</td>
+              <td className="py-2 text-center text-base font-bold">{weekPoints}</td>
+              <td className="py-2 pr-3 text-center text-base font-bold text-muted-foreground">
+                {member.totalPoints}
+              </td>
             </tr>
           ))}
         </tbody>

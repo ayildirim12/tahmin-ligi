@@ -1,4 +1,4 @@
-import { ListOrdered, Table2, Target, User } from 'lucide-react'
+import { CalendarDays, ListOrdered, Table2, Target, User } from 'lucide-react'
 
 export interface NavTab {
   key: string
@@ -12,19 +12,25 @@ export const communityTabs: NavTab[] = [
     key: 'standings',
     label: 'Puan Durumu',
     icon: Table2,
-    path: (id) => `/c/${id}/puan-durumu`,
+    path: (id) => `/${id}/puan-durumu`,
   },
   {
     key: 'leaderboard',
     label: 'Sıralama',
     icon: ListOrdered,
-    path: (id) => `/c/${id}/siralama`,
+    path: (id) => `/${id}/siralama`,
   },
   {
     key: 'predictions',
     label: 'Tahmin Merkezi',
     icon: Target,
-    path: (id) => `/c/${id}/tahmin`,
+    path: (id) => `/${id}/tahmin`,
+  },
+  {
+    key: 'calendar',
+    label: 'Takvim',
+    icon: CalendarDays,
+    path: (id) => `/${id}/takvim`,
   },
 ]
 

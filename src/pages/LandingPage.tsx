@@ -1,35 +1,17 @@
-import { Radar, Trophy, Users } from 'lucide-react'
-import { useState } from 'react'
-import { Navigate, useSearchParams } from 'react-router-dom'
+import { Plus, Radar, Trophy, User, Users } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
+import { CommunityHubPage } from '@/pages/CommunityHubPage'
 import { Button } from '@/components/ui/Button'
-import { GoogleIcon } from '@/components/icons/GoogleIcon'
 import { FullScreenSpinner } from '@/components/ui/Spinner'
 
 export function LandingPage() {
-  const { user, loading, signIn } = useAuth()
-  const [searchParams] = useSearchParams()
-  const [signingIn, setSigningIn] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { user, loading } = useAuth()
 
+  // Signed in: `/` IS the hub — your communities (or the empty/create state),
+  // not a second marketing screen you have to click through.
   if (loading) return <FullScreenSpinner />
-
-  if (user) {
-    const redirect = searchParams.get('redirect')
-    return <Navigate to={redirect ? decodeURIComponent(redirect) : '/hub'} replace />
-  }
-
-  async function handleSignIn() {
-    setError(null)
-    setSigningIn(true)
-    try {
-      await signIn()
-    } catch {
-      setError('Giriş yapılamadı. Lütfen tekrar deneyin.')
-    } finally {
-      setSigningIn(false)
-    }
-  }
+  if (user) return <CommunityHubPage />
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-4 py-12">
@@ -68,21 +50,20 @@ export function LandingPage() {
           </span>
         </div>
 
-        <div className="flex w-full flex-col items-center gap-3">
-          <Button
-            variant="google"
-            size="lg"
-            onClick={handleSignIn}
-            disabled={signingIn}
-            className="w-full"
-          >
-            <GoogleIcon className="size-5" />
-            {signingIn ? 'Giriş yapılıyor…' : 'Google ile giriş yap'}
-          </Button>
-          <p className="text-[11px] text-muted-foreground">Tamamen ücretsiz, kredi kartı gerekmez.</p>
+        <div className="flex w-full flex-col gap-2.5">
+          <Link to="/hub" className="w-full">
+            <Button size="lg" className="w-full">
+              <Plus className="size-4" />
+              Topluluk oluştur
+            </Button>
+          </Link>
+          <Link to="/profil" className="w-full">
+            <Button variant="secondary" size="lg" className="w-full">
+              <User className="size-4" />
+              Profilim
+            </Button>
+          </Link>
         </div>
-
-        {error && <p className="text-sm text-destructive">{error}</p>}
       </div>
     </div>
   )

@@ -29,7 +29,7 @@ export function CommunitySwitcher({ activeCommunityId }: { activeCommunityId: st
           {communities.map((c) => (
             <DropdownMenu.Item
               key={c.id}
-              onSelect={() => navigate(`/c/${c.id}/puan-durumu`)}
+              onSelect={() => navigate(`/${c.id}/puan-durumu`)}
               className="flex cursor-pointer items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm outline-none hover:bg-surface-muted"
             >
               <span className="truncate">{c.name}</span>

@@ -9,6 +9,14 @@
       ]
     },
     {
+      "collectionGroup": "matches",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "gameweek", "order": "ASCENDING" },
+        { "fieldPath": "kickoffAt", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "predictions",
       "queryScope": "COLLECTION",
       "fields": [

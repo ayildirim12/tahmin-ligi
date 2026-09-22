@@ -2,16 +2,45 @@ import { Timestamp } from 'firebase-admin/firestore'
 import { fetchStandings } from './highlightlyApi.ts'
 import { db } from './firestoreAdmin.ts'
 
-function parseForm(form: string | undefined): Array<'W' | 'D' | 'L'> {
-  if (!form) return []
-  return form
-    .split('')
-    .filter((c): c is 'W' | 'D' | 'L' => c === 'W' || c === 'D' || c === 'L')
-    .slice(-5)
+type FormResult = 'W' | 'D' | 'L'
+
+/**
+ * Highlightly's `/standings` endpoint doesn't return a form string (confirmed absent — see
+ * worker/AGENTS.md §4), so "Son 5" is derived ourselves from our own `matches` collection
+ * instead of trusting the API for it. One query for every FINISHED match, then a per-team
+ * last-5 (chronological, oldest→newest — StandingsTable renders the array left to right) is
+ * built in memory; cheap even for a full season (~150-300 docs), and only runs on the
+ * low-frequency housekeeping cadence alongside the rest of syncStandings.
+ */
+async function computeFormByTeam(): Promise<Record<string, FormResult[]>> {
+  const finished = await db
+    .collection('matches')
+    .where('status', '==', 'FINISHED')
+    .orderBy('kickoffAt', 'asc')
+    .get()
+
+  const byTeam: Record<string, FormResult[]> = {}
+  for (const doc of finished.docs) {
+    const m = doc.data()
+    if (m.finalHomeGoals === null || m.finalAwayGoals === null) continue
+
+    const homeResult: FormResult =
+      m.finalHomeGoals > m.finalAwayGoals ? 'W' : m.finalHomeGoals < m.finalAwayGoals ? 'L' : 'D'
+    const awayResult: FormResult =
+      homeResult === 'W' ? 'L' : homeResult === 'L' ? 'W' : 'D'
+
+    ;(byTeam[m.homeTeamId] ??= []).push(homeResult)
+    ;(byTeam[m.awayTeamId] ??= []).push(awayResult)
+  }
+
+  for (const teamId in byTeam) {
+    byTeam[teamId] = byTeam[teamId].slice(-5)
+  }
+  return byTeam
 }
 
 export async function syncStandings(): Promise<void> {
-  const rows = await fetchStandings()
+  const [rows, formByTeam] = await Promise.all([fetchStandings(), computeFormByTeam()])
 
   await db
     .collection('standings')
@@ -29,9 +58,7 @@ export async function syncStandings(): Promise<void> {
         goalsAgainst: row.total.receivedGoals,
         goalDiff: row.total.scoredGoals - row.total.receivedGoals,
         points: row.points,
-        // `form` is confirmed ABSENT from this endpoint (worker/AGENTS.md §4) — degrades
-        // gracefully to no form badges (StandingsTable handles an empty array fine).
-        form: parseForm(row.form),
+        form: formByTeam[String(row.team.id)] ?? [],
       })),
     })
 

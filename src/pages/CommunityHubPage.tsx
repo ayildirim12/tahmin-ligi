@@ -44,7 +44,7 @@ export function CommunityHubPage() {
         ) : (
           <div className="flex flex-col gap-3">
             {communities.map((c) => (
-              <Link key={c.id} to={`/c/${c.id}/puan-durumu`}>
+              <Link key={c.id} to={`/${c.id}/puan-durumu`}>
                 <Card className="flex items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:border-primary/40">
                   <div>
                     <p className="font-semibold">{c.name}</p>
