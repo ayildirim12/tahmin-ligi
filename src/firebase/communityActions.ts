@@ -24,6 +24,7 @@ import {
   memberPredictionsCol,
   predictionsCollectionGroup,
 } from './firestore'
+import { getOwnDisplayName } from './profileActions'
 import { generateInviteCode } from '@/lib/inviteCode'
 import { generateCommunityId } from '@/lib/communityId'
 
@@ -51,8 +52,7 @@ export async function createCommunity(user: User, name: string): Promise<string>
 
   await setDoc(memberDoc(communityRef.id, user.uid), {
     uid: user.uid,
-    displayName: user.displayName ?? 'İsimsiz Kullanıcı',
-    photoURL: user.photoURL,
+    displayName: (await getOwnDisplayName(user.uid)) ?? 'İsimsiz Kullanıcı',
     role: 'owner',
     joinedAt: serverTimestamp(),
     totalPoints: 0,
@@ -92,8 +92,7 @@ export async function joinCommunityByCode(user: User, code: string): Promise<str
 
   await setDoc(memberDoc(invite.communityId, user.uid), {
     uid: user.uid,
-    displayName: user.displayName ?? 'İsimsiz Kullanıcı',
-    photoURL: user.photoURL,
+    displayName: (await getOwnDisplayName(user.uid)) ?? 'İsimsiz Kullanıcı',
     role: 'member',
     joinedAt: serverTimestamp(),
     totalPoints: 0,

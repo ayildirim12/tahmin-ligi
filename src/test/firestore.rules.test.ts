@@ -211,6 +211,65 @@ describe('predictions collection-group queries', () => {
   })
 })
 
+describe('self-chosen display names', () => {
+  it('a user can create their own users doc with no name yet (first sign-in)', async () => {
+    const outsider = testEnv.authenticatedContext(OUTSIDER_UID)
+    await assertSucceeds(
+      outsider
+        .firestore()
+        .collection('users')
+        .doc(OUTSIDER_UID)
+        .set({ displayName: null, email: 'x@example.com', communityIds: [] }),
+    )
+  })
+
+  it('a user can set their own display name', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.firestore().collection('users').doc(MEMBER_UID).set({ displayName: null })
+    })
+    const member = testEnv.authenticatedContext(MEMBER_UID)
+    await assertSucceeds(
+      member.firestore().collection('users').doc(MEMBER_UID).update({ displayName: 'eren' }),
+    )
+  })
+
+  it('a user cannot rename someone else', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.firestore().collection('users').doc(OWNER_UID).set({ displayName: 'abdü' })
+    })
+    const member = testEnv.authenticatedContext(MEMBER_UID)
+    await assertFails(
+      member.firestore().collection('users').doc(OWNER_UID).update({ displayName: 'hacked' }),
+    )
+  })
+
+  it('a member can rename themselves on their own member doc', async () => {
+    const member = testEnv.authenticatedContext(MEMBER_UID)
+    await assertSucceeds(
+      member
+        .firestore()
+        .collection('communities')
+        .doc(COMMUNITY_ID)
+        .collection('members')
+        .doc(MEMBER_UID)
+        .update({ displayName: 'eren' }),
+    )
+  })
+
+  it('a member cannot rename another member', async () => {
+    const member = testEnv.authenticatedContext(MEMBER_UID)
+    await assertFails(
+      member
+        .firestore()
+        .collection('communities')
+        .doc(COMMUNITY_ID)
+        .collection('members')
+        .doc(OWNER_UID)
+        .update({ displayName: 'hacked' }),
+    )
+  })
+})
+
 describe('community enumeration is blocked', () => {
   it('the communities collection can never be listed, even by a member', async () => {
     const owner = testEnv.authenticatedContext(OWNER_UID)

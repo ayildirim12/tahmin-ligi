@@ -17,7 +17,6 @@ export function useMembers(communityId: string) {
             return {
               uid: data.uid,
               displayName: data.displayName,
-              photoURL: data.photoURL,
               role: data.role,
               joinedAt: data.joinedAt?.toMillis?.() ?? 0,
               totalPoints: data.totalPoints ?? 0,

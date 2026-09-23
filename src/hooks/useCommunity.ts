@@ -65,7 +65,6 @@ export function useCommunity(communityId: string | undefined): UseCommunityResul
           setMembership({
             uid: data.uid,
             displayName: data.displayName,
-            photoURL: data.photoURL,
             role: data.role,
             joinedAt: data.joinedAt?.toMillis?.() ?? 0,
             totalPoints: data.totalPoints ?? 0,

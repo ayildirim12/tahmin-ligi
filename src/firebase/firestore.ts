@@ -40,6 +40,10 @@ export function inviteCodeDoc(code: string) {
   return doc(db, 'inviteCodes', code)
 }
 
+export function userDoc(uid: string) {
+  return doc(db, 'users', uid)
+}
+
 export function standingsDoc() {
   return doc(db, 'standings', 'superlig')
 }
@@ -48,15 +52,20 @@ export function configDoc() {
   return doc(db, 'meta', 'config')
 }
 
-export async function ensureUserDoc(user: { uid: string; displayName: string | null; email: string | null; photoURL: string | null }) {
+/**
+ * `displayName` is deliberately left empty here rather than seeded from the
+ * Google account: the user picks their own name on first sign-in (see
+ * NameSetupPage), and that chosen name — not the Google one — is what every
+ * community shows.
+ */
+export async function ensureUserDoc(user: { uid: string; email: string | null }) {
   const ref = doc(db, 'users', user.uid)
   const snap = await getDoc(ref)
   if (snap.exists()) return
 
   await setDoc(ref, {
-    displayName: user.displayName ?? 'İsimsiz Kullanıcı',
+    displayName: null,
     email: user.email,
-    photoURL: user.photoURL,
     communityIds: [],
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),

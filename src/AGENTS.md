@@ -139,6 +139,28 @@ Kurallar dosyasının genel mantığı `../AGENTS.md §5`'te — burada bunun CL
 
 ## 5. Şu ana kadar yapılan ve doğrulanan (frontend)
 
+- **Kullanıcı adları artık Google hesabından GELMİYOR, kullanıcı kendi seçiyor; profil fotoğrafı
+  hiç kullanılmıyor** (kullanıcı isteği).
+  - Tek doğruluk kaynağı `users/{uid}.displayName`. `ensureUserDoc` artık bu alanı `null` olarak
+    yaratıyor (eskiden Google'ın `displayName`'ini kopyalıyordu). `useUserProfile` hook'u bu
+    dokümanı canlı dinliyor.
+  - İsim seçilmeden uygulamaya girilemiyor: `RequireAuth` (ve `/` rotası `RequireAuth` dışında
+    kaldığı için ayrıca `LandingPage`) isim boşsa `NameSetupPage`'i render ediyor. İsim sonradan
+    `ProfileTab`'daki kalem ikonundan değiştirilebiliyor.
+  - İsim member dokümanlarına denormalize olduğu için `saveDisplayName` (`profileActions.ts`)
+    hem `users/{uid}`'yi hem de kullanıcının TÜM `communities/*/members/{uid}` dokümanlarını
+    güncelliyor (`Promise.allSettled` — bir topluluk hata verirse diğerleri yazılmaya devam eder,
+    `users` dokümanı zaten kaynak olduğu için sonraki kayıt geride kalanı toparlar).
+  - `photoURL` her yerden kaldırıldı: `CommunityMember` tipinden, member/user yazmalarından,
+    `useMembers`/`useCommunity` mapper'larından ve UI'dan (`MemberAvatar.tsx` silindi; sıralama
+    tablosu, üye listesi ve profil artık sadece isim gösteriyor).
+  - Prod verisi tek seferlik `worker/scratch/renameMembers.ts` ile güncellendi: isimler
+    "Abdulhamid Yıldırım"→`abdü`, "losgam"→`yusuf`, "Eren karakurt"→`eren`; tüm `photoURL`
+    alanları silindi. İsimler topluluk bazlı değil kullanıcı bazlı, yani her toplulukta aynı.
+  - Güvenlik kuralları DEĞİŞMEDİ — mevcut kurallar zaten yetiyordu (`users/{uid}` self-update,
+    member dokümanında `hasOnly(['displayName','photoURL'])`). Bunu doğrulayan 5 yeni kural testi
+    eklendi (`firestore.rules.test.ts`, toplam 34 test).
+
 - **Tüm frontend "canlı skor tablosu / yayın grafiği" kimliğine göre yeniden tasarlandı**
   (kullanıcı: her sayfada istemeden bir "AI look" oluşmuştu — Landing/Login/404'te birebir
   kopyalanmış gradient-blob arka plan + glassmorphism kart + jenerik gradyanlı Trophy-ikon rozeti,
@@ -183,11 +205,9 @@ Kurallar dosyasının genel mantığı `../AGENTS.md §5`'te — burada bunun CL
     render olmuyordu (tamamen boş/görünmez) — React `Fragment`'a çevrilince (gerçek bir DOM elementi
     oluşturmadığı için children doğrudan `clipPath`'in altına düşüyor) düzeldi. Yeni bir skeleton
     yazarken bunu tekrar riske atma: children'ı `<g>` ile GRUPLAMA, `<Fragment key={...}>` kullan.
-  - **`MemberAvatar.tsx`** (yeni, `TeamCrest.tsx`'in `onError`→baş harf-dairesi fallback deseninin
-    aynısı): `LeaderboardMatrix`, `MemberList`, `ProfileTab`'daki çıplak `<img src={photoURL}>`
-    kullanımlarının HİÇBİRİNDE fallback yoktu (URL eksik/kırıksa hiçbir şey görünmüyordu) — artık
-    üçü de bunu kullanıyor. `MemberList.tsx`'e ayrıca eksik olan boş-durum mesajı ("Henüz üye yok.")
-    eklendi.
+  - `MemberList.tsx`'e eksik olan boş-durum mesajı ("Henüz üye yok.") eklendi. (Bu turda eklenen
+    `MemberAvatar.tsx` sonradan tamamen kaldırıldı — bkz. aşağıdaki "kullanıcı adları" maddesi,
+    kullanıcı profil fotoğrafı istemedi.)
   - **Canlı gösterge rengi primary(altın)'dan accent(kırmızı)'ya çevrildi** (`FixtureCard.tsx`nın
     `MatchStatusBadge`'i, `CalendarTab.tsx`nın `ResultBadge`'i, `MatchColumnHeader.tsx`) — kırmızı
     canlı için yaygın yayın konvansiyonu, altın CTA/lider vurgusuna ayrıldı.
@@ -303,7 +323,7 @@ Kurallar dosyasının genel mantığı `../AGENTS.md §5`'te — burada bunun CL
   4. Devre dışı butonlar aktif butondan görsel olarak ayırt edilemiyordu (`disabled:opacity-50`
      karanlık temada neredeyse görünmüyordu) → `Button.tsx`'te `disabled:bg-surface-muted
      disabled:text-muted-foreground`'a çevrildi
-- **29 test geçiyor** (16 `scoring.test.ts` + 13 `test/firestore.rules.test.ts`), `npm run build`
+- **34 test geçiyor** (16 `scoring.test.ts` + 18 `test/firestore.rules.test.ts`), `npm run build`
   temiz (tek uyarı: ana JS bundle ~1MB, code-split edilmedi — backlog).
 - **Tahminler artık `communities/{id}/members/{uid}/predictions/{matchId}` altında nested**
   (eskiden `communities/{id}/predictions/{uid}_{matchId}` düz koleksiyondu). Sebep: kullanıcı

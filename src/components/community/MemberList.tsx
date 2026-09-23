@@ -1,7 +1,6 @@
 import { Crown, X } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { IconButton } from '@/components/ui/IconButton'
-import { MemberAvatar } from './MemberAvatar'
 import type { CommunityMember } from '@/shared/types'
 
 export function MemberList({
@@ -24,7 +23,6 @@ export function MemberList({
       {members.map((member) => (
         <div key={member.uid} className="flex items-center justify-between gap-2 py-2.5">
           <div className="flex min-w-0 items-center gap-2.5">
-            <MemberAvatar photoURL={member.photoURL} displayName={member.displayName} size={28} />
             <span className="truncate text-sm font-medium">{member.displayName}</span>
             {member.role === 'owner' && <Crown className="size-3.5 shrink-0 text-warning" />}
           </div>

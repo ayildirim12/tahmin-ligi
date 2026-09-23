@@ -52,7 +52,6 @@ export interface Prediction {
 export interface CommunityMember {
   uid: string
   displayName: string
-  photoURL: string | null
   role: 'owner' | 'member'
   joinedAt: number
   totalPoints: number

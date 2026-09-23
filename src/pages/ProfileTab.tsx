@@ -1,27 +1,69 @@
-import { LogOut, Moon, Sun, Trash2 } from 'lucide-react'
+import { LogOut, Moon, Pencil, Sun, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { BlockedByOwnedCommunitiesError, deleteAccount } from '@/firebase/accountActions'
+import {
+  MAX_DISPLAY_NAME_LENGTH,
+  saveDisplayName,
+  validateDisplayName,
+} from '@/firebase/profileActions'
 import { useCommunities } from '@/hooks/useCommunities'
+import { useUserProfile } from '@/hooks/useUserProfile'
 import { getLastCommunityId } from '@/lib/lastCommunity'
 import { AppShell } from '@/components/layout/AppShell'
-import { MemberAvatar } from '@/components/community/MemberAvatar'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Dialog } from '@/components/ui/Dialog'
+import { IconButton } from '@/components/ui/IconButton'
+import { Input } from '@/components/ui/Input'
 import { Switch } from '@/components/ui/Switch'
 
 export function ProfileTab() {
   const { user, signOutUser } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const { communities } = useCommunities()
+  const { profile } = useUserProfile()
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [blocked, setBlocked] = useState<string[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [nameOpen, setNameOpen] = useState(false)
+  const [nameDraft, setNameDraft] = useState('')
+  const [savingName, setSavingName] = useState(false)
+  const [nameError, setNameError] = useState<string | null>(null)
 
   if (!user) return null
+
+  function openNameDialog() {
+    setNameDraft(profile?.displayName ?? '')
+    setNameError(null)
+    setNameOpen(true)
+  }
+
+  async function handleSaveName(event: React.FormEvent) {
+    event.preventDefault()
+    const validationError = validateDisplayName(nameDraft)
+    if (validationError) {
+      setNameError(validationError)
+      return
+    }
+
+    setNameError(null)
+    setSavingName(true)
+    try {
+      await saveDisplayName(
+        user!.uid,
+        nameDraft,
+        communities.map((c) => c.id),
+      )
+      setNameOpen(false)
+    } catch {
+      setNameError('İsim kaydedilemedi. Lütfen tekrar dene.')
+    } finally {
+      setSavingName(false)
+    }
+  }
 
   async function handleDelete() {
     setDeleting(true)
@@ -44,12 +86,14 @@ export function ProfileTab() {
   return (
     <AppShell communityId={getLastCommunityId()}>
       <div className="mx-auto flex max-w-sm flex-col gap-5 pt-6">
-        <Card className="flex items-center gap-3 px-4 py-4">
-          <MemberAvatar photoURL={user.photoURL} displayName={user.displayName} size={48} />
+        <Card className="flex items-center justify-between gap-3 px-4 py-4">
           <div className="min-w-0">
-            <p className="truncate font-semibold">{user.displayName}</p>
+            <p className="truncate font-semibold">{profile?.displayName ?? '—'}</p>
             <p className="truncate text-xs text-muted-foreground">{user.email}</p>
           </div>
+          <IconButton aria-label="İsmi değiştir" onClick={openNameDialog}>
+            <Pencil className="size-4" />
+          </IconButton>
         </Card>
 
         <Card className="flex items-center justify-between px-4 py-3.5">
@@ -70,6 +114,27 @@ export function ProfileTab() {
           Hesabımı sil
         </Button>
       </div>
+
+      <Dialog
+        open={nameOpen}
+        onOpenChange={setNameOpen}
+        title="İsmini değiştir"
+        description="Topluluklarında ve sıralama tablosunda bu isimle görünürsün."
+      >
+        <form onSubmit={handleSaveName} className="flex flex-col gap-3">
+          <Input
+            id="profile-display-name"
+            value={nameDraft}
+            onChange={(e) => setNameDraft(e.target.value)}
+            maxLength={MAX_DISPLAY_NAME_LENGTH}
+            autoFocus
+          />
+          {nameError && <p className="text-sm text-destructive">{nameError}</p>}
+          <Button type="submit" disabled={savingName}>
+            {savingName ? 'Kaydediliyor…' : 'Kaydet'}
+          </Button>
+        </form>
+      </Dialog>
 
       <Dialog
         open={confirmOpen}

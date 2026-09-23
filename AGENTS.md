@@ -124,7 +124,7 @@ worker/kural değiştiren taraf bunları tekrar kırmamalı):
    sorgunun TAMAMINI reddeder. (Frontend tarafında bunun somut etkisi için `src/AGENTS.md`'ye
    bakın — `useGameweekPredictions` bu yüzden iki ayrı sorgu çalıştırıyor.)
 
-Bu üç noktayı doğrulayan otomatik testler: `src/test/firestore.rules.test.ts` (13 test, Firestore
+Bu üç noktayı doğrulayan otomatik testler: `src/test/firestore.rules.test.ts` (18 test, Firestore
 emulator gerektirir). **`firestore.rules`'ı değiştirdikten sonra mutlaka bu testleri çalıştırın**
 (`firebase emulators:start --only firestore,auth` ayaktayken `npm test`). Emulator, kural
 dosyasındaki değişiklikleri otomatik hot-reload eder.
@@ -139,7 +139,7 @@ dosyasındaki değişiklikleri otomatik hot-reload eder.
   yenilemeden doğru güncellendi; worker'ın puan kesinleştirme (`finalizeFinishedMatches`)
   fonksiyonu da emulator'a karşı çalıştırılıp `totalPoints`/`winsCount` doğru arttığı doğrulandı.
 - 4 UI bug'ı bu oturumda bulunup düzeltildi (detay: `src/AGENTS.md`).
-- **29/29 test geçiyor** (16 puanlama + 13 güvenlik kuralı), `npm run build` temiz, worker
+- **34/34 test geçiyor** (16 puanlama + 18 güvenlik kuralı), `npm run build` temiz, worker
   `tsc --noEmit` temiz.
 - **Hiçbir zaman gerçek API-Football verisine karşı çalıştırılmadı** — sadece yerel seed script'i
   ve elle yazılmış simülasyon script'leriyle test edildi (detay: `worker/AGENTS.md`).

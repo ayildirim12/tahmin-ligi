@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import { MatchColumnHeader } from './MatchColumnHeader'
 import { PredictionCell } from './PredictionCell'
 import { SortableHeaderCell } from './SortableHeaderCell'
-import { MemberAvatar } from '@/components/community/MemberAvatar'
 import { useAuth } from '@/contexts/AuthContext'
 import { computeCellState } from '@/lib/liveScoring'
 import { predictionKey } from '@/hooks/useGameweekPredictions'
@@ -93,8 +92,7 @@ export function LeaderboardMatrix({
               <td className="sticky left-0 bg-surface py-2 pl-3">
                 <div className="flex items-center gap-2">
                   <span className="w-4 text-xs font-medium text-muted-foreground">{i + 1}</span>
-                  <MemberAvatar photoURL={member.photoURL} displayName={member.displayName} size={24} />
-                  <span className="max-w-[110px] truncate text-sm font-medium">
+                  <span className="max-w-[130px] truncate text-sm font-medium">
                     {member.displayName}
                   </span>
                 </div>

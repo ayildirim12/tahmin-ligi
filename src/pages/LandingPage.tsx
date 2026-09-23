@@ -1,18 +1,26 @@
 import { Plus, User } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
+import { useUserProfile } from '@/hooks/useUserProfile'
 import { CommunityHubPage } from '@/pages/CommunityHubPage'
+import { NameSetupPage } from '@/pages/NameSetupPage'
 import { AuthHeroShell } from '@/components/layout/AuthHeroShell'
 import { Button } from '@/components/ui/Button'
 import { FullScreenSpinner } from '@/components/ui/Spinner'
 
 export function LandingPage() {
   const { user, loading } = useAuth()
+  const { profile, loading: profileLoading } = useUserProfile()
 
   // Signed in: `/` IS the hub — your communities (or the empty/create state),
-  // not a second marketing screen you have to click through.
+  // not a second marketing screen you have to click through. This route sits
+  // outside RequireAuth, so the "pick a name first" gate is repeated here.
   if (loading) return <FullScreenSpinner />
-  if (user) return <CommunityHubPage />
+  if (user) {
+    if (profileLoading) return <FullScreenSpinner />
+    if (!profile?.displayName) return <NameSetupPage />
+    return <CommunityHubPage />
+  }
 
   return (
     <AuthHeroShell
