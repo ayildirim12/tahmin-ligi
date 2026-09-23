@@ -11,18 +11,25 @@ function ScoreField({
   disabled,
   label,
 }: {
-  value: number
+  value: number | null
   onCommit: (next: number) => void
   disabled: boolean
   label: string
 }) {
-  const [text, setText] = useState(String(value))
+  const [text, setText] = useState(value === null ? '' : String(value))
 
   useEffect(() => {
-    setText(String(value))
+    setText(value === null ? '' : String(value))
   }, [value])
 
   function commit(raw: string) {
+    // Leaving an untouched (empty) field without typing anything shouldn't
+    // turn it into a "0" — only actually clearing a field that had a value
+    // resets it to 0.
+    if (raw === '' && value === null) {
+      setText('')
+      return
+    }
     const parsed = Number.parseInt(raw, 10)
     const next = Number.isNaN(parsed) ? 0 : clamp(parsed)
     setText(String(next))
@@ -59,9 +66,9 @@ export function ScoreInput({
   disabled,
   className,
 }: {
-  homeGoals: number
-  awayGoals: number
-  onChange: (homeGoals: number, awayGoals: number) => void
+  homeGoals: number | null
+  awayGoals: number | null
+  onChange: (homeGoals: number | null, awayGoals: number | null) => void
   disabled?: boolean
   className?: string
 }) {

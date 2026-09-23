@@ -55,7 +55,10 @@ export function FixtureCard({
   const { prediction, loading } = useMyPrediction(communityId, match.id)
   const locked = isLocked(match.kickoffAt) || match.status !== 'SCHEDULED'
 
-  const [draft, setDraft] = useState({ home: 0, away: 0 })
+  const [draft, setDraft] = useState<{ home: number | null; away: number | null }>({
+    home: null,
+    away: null,
+  })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
@@ -73,7 +76,7 @@ export function FixtureCard({
     setSaving(true)
     setSaved(false)
     try {
-      await saveMyPrediction(user.uid, match.id, draft.home, draft.away, allCommunityIds)
+      await saveMyPrediction(user.uid, match.id, draft.home ?? 0, draft.away ?? 0, allCommunityIds)
       setSaved(true)
     } finally {
       setSaving(false)
