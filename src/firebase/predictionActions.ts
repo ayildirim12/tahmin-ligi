@@ -22,6 +22,7 @@ async function savePredictionInCommunity(
   } else {
     await setDoc(ref, {
       uid,
+      communityId,
       matchId,
       homeGoals,
       awayGoals,

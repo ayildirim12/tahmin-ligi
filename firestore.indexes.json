@@ -18,9 +18,9 @@
     },
     {
       "collectionGroup": "predictions",
-      "queryScope": "COLLECTION",
+      "queryScope": "COLLECTION_GROUP",
       "fields": [
-        { "fieldPath": "uid", "order": "ASCENDING" },
+        { "fieldPath": "communityId", "order": "ASCENDING" },
         { "fieldPath": "locked", "order": "ASCENDING" }
       ]
     }

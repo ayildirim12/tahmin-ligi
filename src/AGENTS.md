@@ -105,11 +105,21 @@ tamamen doğru olsa bile sonuç yanlış render oluyor.
 Kurallar dosyasının genel mantığı `../AGENTS.md §5`'te — burada bunun CLIENT KODUNA somut etkisi:
 
 - **`useGameweekPredictions`** (`src/hooks/useGameweekPredictions.ts`): bir topluluğun tahminlerini
-  TEK sorguyla çekmiyor. `where('locked','==',true)` ve `where('uid','==',myUid)` diye İKİ ayrı
-  `onSnapshot` açıp sonuçları merge ediyor. Sebep: güvenlik kuralı `resource.data.uid==self ||
-  resource.data.locked==true` şeklinde, ve Firestore `list` sorgularında bu tarz OR koşulunu
-  ancak sorgunun kendisi ilgili alanla filtrelenmişse "provable" sayıyor. Yeni bir liderlik/tahmin
-  görünümü eklerken bu pattern'i kopyala, tek birleşik sorgu YAZMA (reddedilir).
+  TEK sorguyla çekmiyor, İKİ ayrı `onSnapshot` açıp sonuçları merge ediyor — ama artık iki sorgu
+  FARKLI KOLEKSİYON ŞEKİLLERİ üzerinde çalışıyor (tahminler `members/{uid}/predictions` altında
+  nested olduğu için, düz bir "topluluğun tüm tahminleri" koleksiyonu artık yok):
+  - "mine": `memberPredictionsCol(communityId, myUid)` — kendi nested alt koleksiyonumu FİLTRESİZ
+    okuyorum (path zaten bana scoped).
+  - "locked": `collectionGroup(db,'predictions')` + `where('communityId','==',id)` +
+    `where('locked','==',true)` — topluluktaki HERKESİN kilitli tahminlerini bulmanın tek yolu,
+    çünkü collection-group sorgusu ata path'ine göre filtreleyemez, sadece alan değerine göre
+    (bu yüzden her prediction dokümanı `communityId` alanını da taşıyor).
+  Sonuçlar `predictionKey(uid, matchId)` (VERİDEN türetilen, `${uid}_${matchId}` biçiminde bir
+  string) ile birleştiriliyor — **ASLA ham `doc.id` ile değil**: nested yapıda doküman id'si artık
+  sadece `matchId`, yani farklı üyelerin aynı maça ait dokümanları AYNI id'yi taşıyor ve ham id'yi
+  key olarak kullanmak sessizce birini diğerinin üstüne yazar. Yeni bir liderlik/tahmin görünümü
+  eklerken bu iki-sorgu + veri-bazlı-key pattern'ini kopyala, tek birleşik sorgu ya da `doc.id`
+  key'i YAZMA (biri reddedilir, diğeri veri kaybına yol açar).
 - **`useMyPrediction`** (`src/hooks/useMyPrediction.ts`): henüz hiç tahmin girilmemiş bir maç için
   `onSnapshot(predictionDoc(...))` — doküman yok, `resource` null. `firestore.rules`'taki ilgili
   `get` kuralı bunu `resource == null || ...` ile karşılıyor. Yeni benzer bir "tekil doküman var mı
@@ -232,8 +242,17 @@ Kurallar dosyasının genel mantığı `../AGENTS.md §5`'te — burada bunun CL
   4. Devre dışı butonlar aktif butondan görsel olarak ayırt edilemiyordu (`disabled:opacity-50`
      karanlık temada neredeyse görünmüyordu) → `Button.tsx`'te `disabled:bg-surface-muted
      disabled:text-muted-foreground`'a çevrildi
-- **25 test geçiyor** (16 `scoring.test.ts` + 9 `test/firestore.rules.test.ts`), `npm run build`
+- **29 test geçiyor** (16 `scoring.test.ts` + 13 `test/firestore.rules.test.ts`), `npm run build`
   temiz (tek uyarı: ana JS bundle ~1MB, code-split edilmedi — backlog).
+- **Tahminler artık `communities/{id}/members/{uid}/predictions/{matchId}` altında nested**
+  (eskiden `communities/{id}/predictions/{uid}_{matchId}` düz koleksiyondu). Sebep: kullanıcı
+  "her member ayrı prediction yapacak, members altında olsun" istedi. Prod'daki eski
+  `predictions` alt koleksiyonu MİGRASYON YAPILMADAN silindi (kullanıcı kararı: "direkt sil,
+  sıfırdan başla") — `members.totalPoints/totalPredictions/winsCount` etkilenmedi, sadece maç
+  bazlı tahmin geçmişi (Calendar/Leaderboard hücreleri) o ana kadarki maçlar için boş görünür.
+  Bu değişiklik `useGameweekPredictions`'ın iki-sorgu deseninin ŞEKLİNİ değiştirdi (bkz. §4) ve
+  her prediction dokümanına bir `communityId` alanı eklettirdi (collection-group sorgusu ata
+  yoluna göre filtreleyemediği için gerekli — bkz. `../AGENTS.md §5`).
 
 ---
 

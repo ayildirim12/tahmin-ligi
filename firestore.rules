@@ -11,6 +11,11 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
+    function isCommunityMember(communityId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid));
+    }
+
     // ---- Read-only reference / worker-owned data ----
     // The GitHub Actions worker writes these via the Admin SDK, which bypasses
     // rules entirely — so `write: if false` here just means "no client may
@@ -75,10 +80,11 @@ service cloud.firestore {
     // Firestore only applies a `collectionGroup()` query's security to rules
     // written with the `{path=**}/<collectionId>/{docId}` wildcard form — the
     // ordinary nested rules below (under `communities/{communityId}/...`)
-    // govern direct, single-community-scoped reads/writes only. Both of these
-    // are deliberately self-uid-only: they exist purely to let a signed-in
-    // user discover their OWN membership/prediction docs scattered across
-    // every community, never anyone else's.
+    // govern direct, single-community-scoped reads/writes only. The `members`
+    // block is deliberately self-uid-only (discover your OWN membership docs
+    // scattered across every community); the `predictions` block below it
+    // additionally allows reading another member's LOCKED prediction within
+    // a shared community — see its own comment for why.
 
     // `get` on a document that doesn't exist yet gives a null `resource` —
     // dereferencing `resource.data` on it is a rules evaluation ERROR (which
@@ -92,9 +98,28 @@ service cloud.firestore {
       allow list: if isSignedIn() && resource.data.uid == request.auth.uid;
     }
 
+    // Predictions now live nested under their author's member doc
+    // (`communities/{id}/members/{uid}/predictions/{matchId}`), so this
+    // collection-group block carries two distinct purposes, same as the
+    // `members` one above:
+    //  - self-uid discovery of every prediction a user has ever made, across
+    //    every community, regardless of current membership — powers the
+    //    account-deletion cascade's final sweep (see communityActions.ts /
+    //    accountActions.ts).
+    //  - the community-wide "every LOCKED prediction in community X" read
+    //    the leaderboard needs (across every member's subcollection, which a
+    //    single nested rule can't cover) — provable only because each
+    //    prediction doc denormalizes its own `communityId`.
     match /{path=**}/predictions/{predictionId} {
-      allow get: if isSignedIn() && (resource == null || resource.data.uid == request.auth.uid);
-      allow list: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow get: if isSignedIn() && (
+        resource == null
+        || resource.data.uid == request.auth.uid
+        || (resource.data.locked == true && isCommunityMember(resource.data.communityId))
+      );
+      allow list: if isSignedIn() && (
+        resource.data.uid == request.auth.uid
+        || (resource.data.locked == true && isCommunityMember(resource.data.communityId))
+      );
     }
 
     // ---- Communities ----
@@ -190,74 +215,61 @@ service cloud.firestore {
         // boundary, since orphaning owner-less admin rights isn't a data leak.
         allow delete: if isSignedIn()
           && (request.auth.uid == memberUid || communityOwnerUid() == request.auth.uid);
-      }
 
-      // ---- Predictions (community-scoped, per decision: a locked prediction
-      // is visible only to members of the SAME community, never site-wide) ----
+        // ---- Predictions (nested under their author's member doc; a locked
+        // prediction is visible community-wide via the collection-group
+        // block above, never site-wide) ----
 
-      match /predictions/{predictionId} {
-        function callerIsMember() {
-          return isSignedIn()
-            && exists(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid));
+        match /predictions/{predictionId} {
+          // Direct, single-member-scoped access: only the member themself
+          // reads/lists their OWN subcollection this way (this is what
+          // src/hooks/useGameweekPredictions.ts's "mine" query and
+          // useMyPrediction.ts hit). Seeing OTHER members' locked
+          // predictions goes through the collection-group block above
+          // instead — a nested rule like this one can't govern a
+          // collection-group query that spans every member's subcollection.
+          allow get: if isSignedIn() && request.auth.uid == memberUid;
+          allow list: if isSignedIn() && request.auth.uid == memberUid;
+
+          allow create: if isSignedIn()
+            && request.auth.uid == memberUid
+            && exists(/databases/$(database)/documents/communities/$(communityId)/members/$(memberUid))
+            && predictionId == request.resource.data.matchId
+            && request.resource.data.uid == memberUid
+            && request.resource.data.communityId == communityId
+            && request.resource.data.homeGoals is int
+            && request.resource.data.homeGoals >= 0 && request.resource.data.homeGoals <= 20
+            && request.resource.data.awayGoals is int
+            && request.resource.data.awayGoals >= 0 && request.resource.data.awayGoals <= 20
+            && request.resource.data.locked == false
+            && request.resource.data.points == null
+            && request.time < get(/databases/$(database)/documents/matches/$(request.resource.data.matchId)).data.kickoffAt;
+
+          allow update: if isSignedIn()
+            && request.auth.uid == memberUid
+            && resource.data.locked == false
+            && request.resource.data.uid == resource.data.uid
+            && request.resource.data.communityId == resource.data.communityId
+            && request.resource.data.matchId == resource.data.matchId
+            && request.resource.data.locked == resource.data.locked
+            && request.resource.data.points == resource.data.points
+            && request.resource.data.homeGoals is int
+            && request.resource.data.homeGoals >= 0 && request.resource.data.homeGoals <= 20
+            && request.resource.data.awayGoals is int
+            && request.resource.data.awayGoals >= 0 && request.resource.data.awayGoals <= 20
+            && request.time < get(/databases/$(database)/documents/matches/$(resource.data.matchId)).data.kickoffAt;
+
+          // Self-delete, no time restriction — used by the account-deletion
+          // cascade. A user removing their own prediction (even a finalized,
+          // already-scored one) correctly makes it disappear from any
+          // leaderboard, matching "right to be forgotten" expectations.
+          // The community owner may also delete ANY prediction doc within
+          // their own community — needed to clean up a removed/departed
+          // member's predictions (which that member didn't delete themselves)
+          // and when tearing down the whole community.
+          allow delete: if isSignedIn()
+            && (request.auth.uid == memberUid || communityOwnerUid() == request.auth.uid);
         }
-
-        // `get` targets one specific doc, which may not exist yet (e.g. "do I
-        // have a prediction for this match" before ever saving one) — a null
-        // `resource` must be let through, since dereferencing `resource.data`
-        // on it is a rules evaluation ERROR (denies the request), not `false`,
-        // and there's nothing to leak from a document that isn't there.
-        allow get: if callerIsMember()
-          && (resource == null || resource.data.uid == request.auth.uid || resource.data.locked == true);
-
-        // `list` requests only ever evaluate against documents that DO exist,
-        // so no null-resource guard is needed here — but Firestore requires
-        // every possible matching document to provably satisfy this condition,
-        // meaning the client MUST issue queries filtered by
-        // `where('uid','==', myUid)` or `where('locked','==', true)` (never an
-        // unfiltered fetch of the whole subcollection). See
-        // src/hooks/useGameweekPredictions.ts for the two-query pattern this
-        // requires.
-        allow list: if callerIsMember()
-          && (resource.data.uid == request.auth.uid || resource.data.locked == true);
-
-        allow create: if isSignedIn()
-          && callerIsMember()
-          && request.auth.uid == request.resource.data.uid
-          && predictionId == (request.auth.uid + '_' + request.resource.data.matchId)
-          && request.resource.data.homeGoals is int
-          && request.resource.data.homeGoals >= 0 && request.resource.data.homeGoals <= 20
-          && request.resource.data.awayGoals is int
-          && request.resource.data.awayGoals >= 0 && request.resource.data.awayGoals <= 20
-          && request.resource.data.locked == false
-          && request.resource.data.points == null
-          && request.time < get(/databases/$(database)/documents/matches/$(request.resource.data.matchId)).data.kickoffAt;
-
-        allow update: if isSignedIn()
-          && request.auth.uid == resource.data.uid
-          && resource.data.locked == false
-          && request.resource.data.uid == resource.data.uid
-          && request.resource.data.matchId == resource.data.matchId
-          && request.resource.data.locked == resource.data.locked
-          && request.resource.data.points == resource.data.points
-          && request.resource.data.homeGoals is int
-          && request.resource.data.homeGoals >= 0 && request.resource.data.homeGoals <= 20
-          && request.resource.data.awayGoals is int
-          && request.resource.data.awayGoals >= 0 && request.resource.data.awayGoals <= 20
-          && request.time < get(/databases/$(database)/documents/matches/$(resource.data.matchId)).data.kickoffAt;
-
-        // Self-delete, no time restriction — used by the account-deletion
-        // cascade. A user removing their own prediction (even a finalized,
-        // already-scored one) correctly makes it disappear from any
-        // leaderboard, matching "right to be forgotten" expectations.
-        // The community owner may also delete ANY prediction doc within
-        // their own community — needed to clean up a removed/departed
-        // member's predictions (which that member didn't delete themselves)
-        // and when tearing down the whole community.
-        allow delete: if isSignedIn()
-          && (
-            request.auth.uid == resource.data.uid
-            || get(/databases/$(database)/documents/communities/$(communityId)).data.ownerUid == request.auth.uid
-          );
       }
     }
   }

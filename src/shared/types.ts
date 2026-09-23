@@ -39,6 +39,7 @@ export interface Match {
 export interface Prediction {
   id: string
   uid: string
+  communityId: string
   matchId: string
   homeGoals: number
   awayGoals: number

@@ -28,12 +28,12 @@ export function memberDoc(communityId: string, uid: string) {
   return doc(db, 'communities', communityId, 'members', uid)
 }
 
-export function predictionsCol(communityId: string) {
-  return collection(db, 'communities', communityId, 'predictions')
+export function memberPredictionsCol(communityId: string, uid: string) {
+  return collection(db, 'communities', communityId, 'members', uid, 'predictions')
 }
 
 export function predictionDoc(communityId: string, uid: string, matchId: string) {
-  return doc(db, 'communities', communityId, 'predictions', `${uid}_${matchId}`)
+  return doc(db, 'communities', communityId, 'members', uid, 'predictions', matchId)
 }
 
 export function inviteCodeDoc(code: string) {

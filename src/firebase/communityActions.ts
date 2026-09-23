@@ -2,7 +2,6 @@ import type { User } from 'firebase/auth'
 import {
   arrayRemove,
   arrayUnion,
-  collectionGroup,
   deleteDoc,
   doc,
   getCountFromServer,
@@ -22,7 +21,8 @@ import {
   inviteCodeDoc,
   membersCol,
   memberDoc,
-  predictionsCol,
+  memberPredictionsCol,
+  predictionsCollectionGroup,
 } from './firestore'
 import { generateInviteCode } from '@/lib/inviteCode'
 import { generateCommunityId } from '@/lib/communityId'
@@ -121,17 +121,32 @@ async function deleteMemberPredictions(
   uid: string,
   options: { onlyLocked: boolean },
 ) {
-  // Querying another member's predictions is only permitted by the security
-  // rules when additionally filtered to `locked == true` (the rule can't
-  // otherwise prove every result is safe to list) — self-cleanup has no such
-  // restriction since the rule's self-uid disjunct covers it unconditionally.
-  const constraints = options.onlyLocked
-    ? [where('uid', '==', uid), where('locked', '==', true)]
-    : [where('uid', '==', uid)]
-  const snap = await getDocs(query(predictionsCol(communityId), ...constraints))
+  if (!options.onlyLocked) {
+    // Self-cleanup: the nested subcollection is already scoped to this uid
+    // by path alone, so no filter (or extra permission) is needed.
+    const snap = await getDocs(memberPredictionsCol(communityId, uid))
+    const batch = writeBatch(db)
+    for (const predictionSnap of snap.docs) batch.delete(predictionSnap.ref)
+    await batch.commit()
+    return
+  }
+
+  // Owner cleaning up a REMOVED member's predictions: the security rules
+  // don't let an owner list another member's still-open predictions by
+  // path, only already-*locked* ones — found the same way the leaderboard
+  // finds them, via a community-scoped collection-group query. `uid` is
+  // filtered in memory rather than adding another composite index, since
+  // the result set for one community is small at this app's scale.
+  const snap = await getDocs(
+    query(
+      predictionsCollectionGroup,
+      where('communityId', '==', communityId),
+      where('locked', '==', true),
+    ),
+  )
   const batch = writeBatch(db)
   for (const predictionSnap of snap.docs) {
-    batch.delete(predictionSnap.ref)
+    if (predictionSnap.data().uid === uid) batch.delete(predictionSnap.ref)
   }
   await batch.commit()
 }
@@ -173,9 +188,7 @@ export async function renameCommunity(communityId: string, name: string) {
  * requirement) the only query shape that's actually permitted here.
  */
 export async function deleteCommunity(user: User, communityId: string, inviteCode: string) {
-  const predictionsSnap = await getDocs(
-    query(predictionsCol(communityId), where('uid', '==', user.uid)),
-  )
+  const predictionsSnap = await getDocs(memberPredictionsCol(communityId, user.uid))
   const batch = writeBatch(db)
   for (const predictionDocSnap of predictionsSnap.docs) {
     batch.delete(predictionDocSnap.ref)
@@ -193,5 +206,5 @@ export async function deleteCommunity(user: User, communityId: string, inviteCod
 
 /** Finds every prediction a user has ever made across every community they belong to. */
 export function userPredictionsQuery(uid: string) {
-  return query(collectionGroup(db, 'predictions'), where('uid', '==', uid))
+  return query(predictionsCollectionGroup, where('uid', '==', uid))
 }

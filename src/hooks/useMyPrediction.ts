@@ -23,6 +23,7 @@ export function useMyPrediction(communityId: string, matchId: string) {
         setPrediction({
           id: snap.id,
           uid: data.uid,
+          communityId: data.communityId,
           matchId: data.matchId,
           homeGoals: data.homeGoals,
           awayGoals: data.awayGoals,

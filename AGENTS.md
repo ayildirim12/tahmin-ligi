@@ -64,7 +64,7 @@ React SPA ──onSnapshot──> Firestore (Spark) <──Admin SDK (kuralları
 | `users/{uid}` | sadece kendisi | e-posta içerir, başkası okuyamaz |
 | `communities/{id}` | oluşturan (create), sahip (rename/delete) | `list` hiç açılmaz |
 | `communities/{id}/members/{uid}` | worker (puan alanları), kullanıcı (profil alanları) | `role`, `totalPoints`, `totalPredictions`, `winsCount` sadece worker |
-| `communities/{id}/predictions/{uid}_{matchId}` | kullanıcı (kendi tahmini) | **topluluk bazlı**, global değil — bkz. aşağı |
+| `communities/{id}/members/{uid}/predictions/{matchId}` | kullanıcı (kendi tahmini) | **topluluk VE üye bazlı** (nested), global değil — bkz. aşağı. Doküman ayrıca `communityId` alanını da taşır (denormalize) — collection-group sorguları ata yoluna göre filtreleyemediği için şart |
 | `inviteCodes/{code}` | sahip | `get` var, `list` yok (numaralandırma engellenir) |
 | `teams/{id}` | worker | `apiTeamId, name, shortName` (crest YOK — bkz. §9, logolar API'den değil `public/crests/{id}.png`'den) |
 | `matches/{id}` | worker | global, tüm topluluklarda ortak |
@@ -110,8 +110,12 @@ worker/kural değiştiren taraf bunları tekrar kırmamalı):
 1. **Collection-group sorguları için `{path=**}/<koleksiyon>/{id}` bloğu şart.** Normal
    `match /communities/{id}/members/{uid}` bloğu SADECE tek bir topluluğa scoped doğrudan
    sorguları kapsar — `collectionGroup(db,'members')` gibi bir sorguyu KAPSAMAZ.
-   `firestore.rules`'ta bu yüzden ayrıca `match /{path=**}/members/{memberUid}` ve
-   `match /{path=**}/predictions/{predictionId}` blokları var (self-uid only).
+   `firestore.rules`'ta bu yüzden ayrıca `match /{path=**}/members/{memberUid}` (self-uid only) ve
+   `match /{path=**}/predictions/{predictionId}` blokları var — ikincisi self-uid'e EK olarak
+   `resource.data.locked==true && isCommunityMember(resource.data.communityId)` de kabul eder,
+   çünkü tahminler artık `members/{uid}/predictions` altında nested olduğu için "bu topluluktaki
+   TÜM kilitli tahminler" sorgusu (liderlik tablosu) ancak collection-group + denormalize
+   `communityId` alanıyla mümkün.
 2. **`get` isteğinde doküman yoksa `resource` `null` olur.** `resource.data.X` şeklinde
    dereference etmek "evaluation error" (= permission-denied) fırlatır, `false` değil. İlgili
    `get` kurallarında `resource == null || ...` guard'ı var.
@@ -120,7 +124,7 @@ worker/kural değiştiren taraf bunları tekrar kırmamalı):
    sorgunun TAMAMINI reddeder. (Frontend tarafında bunun somut etkisi için `src/AGENTS.md`'ye
    bakın — `useGameweekPredictions` bu yüzden iki ayrı sorgu çalıştırıyor.)
 
-Bu üç noktayı doğrulayan otomatik testler: `src/test/firestore.rules.test.ts` (9 test, Firestore
+Bu üç noktayı doğrulayan otomatik testler: `src/test/firestore.rules.test.ts` (13 test, Firestore
 emulator gerektirir). **`firestore.rules`'ı değiştirdikten sonra mutlaka bu testleri çalıştırın**
 (`firebase emulators:start --only firestore,auth` ayaktayken `npm test`). Emulator, kural
 dosyasındaki değişiklikleri otomatik hot-reload eder.
@@ -135,7 +139,7 @@ dosyasındaki değişiklikleri otomatik hot-reload eder.
   yenilemeden doğru güncellendi; worker'ın puan kesinleştirme (`finalizeFinishedMatches`)
   fonksiyonu da emulator'a karşı çalıştırılıp `totalPoints`/`winsCount` doğru arttığı doğrulandı.
 - 4 UI bug'ı bu oturumda bulunup düzeltildi (detay: `src/AGENTS.md`).
-- **25/25 test geçiyor** (16 puanlama + 9 güvenlik kuralı), `npm run build` temiz, worker
+- **29/29 test geçiyor** (16 puanlama + 13 güvenlik kuralı), `npm run build` temiz, worker
   `tsc --noEmit` temiz.
 - **Hiçbir zaman gerçek API-Football verisine karşı çalıştırılmadı** — sadece yerel seed script'i
   ve elle yazılmış simülasyon script'leriyle test edildi (detay: `worker/AGENTS.md`).

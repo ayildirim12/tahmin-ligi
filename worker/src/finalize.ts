@@ -44,8 +44,12 @@ async function finalizeOneMatch(matchId: string, finalHomeGoals: number, finalAw
     )
     batch.update(predictionDoc.ref, { points, locked: true })
 
-    const communityId = predictionDoc.ref.parent.parent!.id
-    memberIncrements.push({ uid: data.uid, communityId, points, isWin: isTendencyOrBetter(points) })
+    memberIncrements.push({
+      uid: data.uid,
+      communityId: data.communityId,
+      points,
+      isWin: isTendencyOrBetter(points),
+    })
   }
 
   for (const { uid, communityId, points, isWin } of memberIncrements) {
