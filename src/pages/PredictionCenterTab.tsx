@@ -1,5 +1,5 @@
 import { FixtureCard } from '@/components/predictions/FixtureCard'
-import { Spinner } from '@/components/ui/Spinner'
+import { MatchRowSkeleton } from '@/components/ui/skeletons/MatchRowSkeleton'
 import { useActiveCommunity } from '@/contexts/ActiveCommunityContext'
 import { useCommunities } from '@/hooks/useCommunities'
 import { useConfig } from '@/hooks/useConfig'
@@ -23,8 +23,10 @@ export function PredictionCenterTab() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-10">
-          <Spinner />
+        <div className="flex flex-col gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <MatchRowSkeleton key={i} withAction />
+          ))}
         </div>
       ) : matches.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">

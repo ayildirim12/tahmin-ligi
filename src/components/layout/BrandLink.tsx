@@ -1,4 +1,3 @@
-import { Trophy } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { cn } from '@/lib/cn'
 
@@ -14,12 +13,10 @@ export function BrandLink({ className }: { className?: string }) {
         className,
       )}
     >
-      <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-primary to-accent text-primary-foreground">
-        <Trophy className="size-3.5" strokeWidth={2.5} />
-      </span>
+      <img src="/brand/mark-64.png" alt="" width={64} height={64} className="size-6 shrink-0 object-contain" />
       {/* Icon-only on narrow phones (shares header space with the community switcher there);
           full wordmark once there's room. */}
-      <span className="hidden sm:inline">Tahmin Ligi</span>
+      <span className="hidden sm:inline font-display tracking-wide">Tahmin Ligi</span>
     </Link>
   )
 }

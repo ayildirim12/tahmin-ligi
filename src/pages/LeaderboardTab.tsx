@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { GameweekSwitcher } from '@/components/leaderboard/GameweekSwitcher'
 import { LeaderboardMatrix } from '@/components/leaderboard/LeaderboardMatrix'
-import { Spinner } from '@/components/ui/Spinner'
+import { LeaderboardMatrixSkeleton } from '@/components/ui/skeletons/LeaderboardMatrixSkeleton'
 import { useActiveCommunity } from '@/contexts/ActiveCommunityContext'
 import { useConfig } from '@/hooks/useConfig'
 import { useGameweekMatches } from '@/hooks/useGameweekMatches'
@@ -37,9 +37,7 @@ export function LeaderboardTab() {
       )}
 
       {loading ? (
-        <div className="flex justify-center py-10">
-          <Spinner />
-        </div>
+        <LeaderboardMatrixSkeleton />
       ) : members.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">Henüz üye yok.</p>
       ) : matches.length === 0 ? (

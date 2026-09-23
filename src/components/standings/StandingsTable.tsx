@@ -51,14 +51,14 @@ export function StandingsTable({
                     <span className="truncate">{team?.shortName ?? row.teamId}</span>
                   </div>
                 </td>
-                <td className="text-center text-muted-foreground">{row.played}</td>
-                <td className="text-center text-muted-foreground">{row.won}</td>
-                <td className="text-center text-muted-foreground">{row.drawn}</td>
-                <td className="text-center text-muted-foreground">{row.lost}</td>
-                <td className="text-center text-muted-foreground">{row.goalsFor}</td>
-                <td className="text-center text-muted-foreground">{row.goalsAgainst}</td>
-                <td className="text-center text-muted-foreground">{row.goalDiff}</td>
-                <td className="text-center text-base font-bold">{row.points}</td>
+                <td className="text-center tabular-nums text-muted-foreground">{row.played}</td>
+                <td className="text-center tabular-nums text-muted-foreground">{row.won}</td>
+                <td className="text-center tabular-nums text-muted-foreground">{row.drawn}</td>
+                <td className="text-center tabular-nums text-muted-foreground">{row.lost}</td>
+                <td className="text-center tabular-nums text-muted-foreground">{row.goalsFor}</td>
+                <td className="text-center tabular-nums text-muted-foreground">{row.goalsAgainst}</td>
+                <td className="text-center tabular-nums text-muted-foreground">{row.goalDiff}</td>
+                <td className="text-center font-display text-base tabular-nums">{row.points}</td>
                 <td className="py-2.5 pr-3">
                   <div className="flex items-center justify-center gap-1">
                     {row.form.map((result, i) => (

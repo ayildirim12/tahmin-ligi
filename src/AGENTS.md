@@ -139,6 +139,67 @@ Kurallar dosyasının genel mantığı `../AGENTS.md §5`'te — burada bunun CL
 
 ## 5. Şu ana kadar yapılan ve doğrulanan (frontend)
 
+- **Tüm frontend "canlı skor tablosu / yayın grafiği" kimliğine göre yeniden tasarlandı**
+  (kullanıcı: her sayfada istemeden bir "AI look" oluşmuştu — Landing/Login/404'te birebir
+  kopyalanmış gradient-blob arka plan + glassmorphism kart + jenerik gradyanlı Trophy-ikon rozeti,
+  hiç yüklenmeyen bir "Inter" fontu, radius token'ı olmadan rastgele `rounded-*` kullanımı, favicon
+  olarak markayla alakasız soyut bir gradyan blob). Değişenler:
+  - **Renk paleti** (`src/index.css`): kullanıcının ChatGPT ile ürettiği yeni forma-arması logosundan
+    (siyah/kırmızı/altın/krem) türetildi — `--primary` artık altın (taç rengi), `--accent` kırmızı
+    (kalkan rengi); `--destructive` (kırmızı) ve `--warning` (altın/amber) ile çakışmaması için
+    `--warning`'in hue'su 75→58'e kaydırıldı, `--destructive` hiç dokunulmadı. Koyu tema öncelikli
+    tasarlandı ama açık tema de tam destekleniyor (aynı token çifti, ayrı değerler).
+  - **Radius token'ı** eklendi (`@theme { --radius-sm/md/lg/xl/2xl }`) — eskiden her bileşende ayrı
+    `rounded-*` serpiştirilmişti, artık tek ölçek; `rounded-3xl` (sadece 3 hero sayfasında vardı)
+    tamamen kaldırıldı.
+  - **Fontlar gerçekten yükleniyor** artık (`index.html`'e Google Fonts `<link>`): `Oswald`
+    (`font-display` token'ı — başlıklar, puan/skor rakamları) + `Inter` (`font-sans`, zaten
+    tanımlıydı ama hiç linklenmemişti, sessizce sistem fontuna düşüyordu).
+  - **Logo işleme pipeline'ı** (`scripts/process-logo.py`, elle çalıştırılır, build'in parçası
+    değil): kaynak PNG'nin opak siyah arkaplanını **köşeden başlayan flood-fill** ile şeffaflaştırır
+    (global chroma-key KULLANMADI — topun kendi siyah pentagonlarını da şeffaflaştırırdı). İki türev
+    üretir: `public/brand/logo-full-*` (amblem+"TAHMİN LİGİ" yazısı, hero kullanımı) ve
+    `public/brand/mark-64.png`+favicon boyutları (sadece taç+top, yazısız — küçük boyutta okunmaz
+    olurdu). `BrandLink.tsx` artık jenerik gradyanlı Trophy ikonu değil gerçek marka görselini
+    gösteriyor; `public/favicon.svg` (alakasız gradyan blob) ve `public/icons.svg` (hiç kullanılmayan
+    ölü sprite) silindi.
+  - **`AuthHeroShell.tsx`** (yeni paylaşılan bileşen): `LandingPage`/`LoginPage`/`NotFoundPage`'de
+    birebir kopyalanmış (aynı inline `style` gradyan blob + `backdrop-blur` cam kart) hero bloğunu
+    tekilleştirdi — yumuşak gradyan blob + pitch-line doku yerine tek yönlü altın "spotlight" +
+    ince mesh doku, glassmorphism yerine düz `bg-surface` + `border-t-4 border-t-primary` "lower
+    third" kenarlığı. `LoginPage`'den jenerik "Tamamen ücretsiz, kredi kartı gerekmez." cümlesi
+    kaldırıldı (Google OAuth'ta anlamsızdı).
+  - **`Dialog.tsx` + `CommunitySwitcher.tsx`'in dropdown'ı artık framer-motion ile gerçekten
+    animasyonlu** açılıp kapanıyor (`AnimatePresence` + Radix `forceMount`). **Dikkat**:
+    framer-motion'ın `scale`/`y` animasyonu da CSS `transform` kullandığı için, Dialog'un ESKİ
+    `-translate-x-1/2 -translate-y-1/2` ile ortalama yöntemi transform'u PAYLAŞIP birbirini
+    ezerdi — bu yüzden ortalama artık transformsuz bir `fixed inset-0 flex items-center
+    justify-center` sarmalayıcıya taşındı, `transform`'u sadece iç `motion.div` kullanıyor.
+  - **Skeleton loading** (`src/components/ui/skeletons/`, `react-content-loader` ile) 5 adet
+    içerik-bazlı `<Spinner>` yerine geçti (Standings/Leaderboard/PredictionCenter/Calendar/
+    CommunityHub) — 5 tam-sayfa/auth-gate `<FullScreenSpinner>` (içerik şekli henüz belli değilken)
+    olduğu gibi bırakıldı. **Bulunan gerçek kütüphane bug'ı**: `react-content-loader`'a geçirilen
+    children bir `<g>` ile sarmalanınca (`<g key={i}>...</g>`) bu tarayıcıda `<clipPath>` içinde HİÇ
+    render olmuyordu (tamamen boş/görünmez) — React `Fragment`'a çevrilince (gerçek bir DOM elementi
+    oluşturmadığı için children doğrudan `clipPath`'in altına düşüyor) düzeldi. Yeni bir skeleton
+    yazarken bunu tekrar riske atma: children'ı `<g>` ile GRUPLAMA, `<Fragment key={...}>` kullan.
+  - **`MemberAvatar.tsx`** (yeni, `TeamCrest.tsx`'in `onError`→baş harf-dairesi fallback deseninin
+    aynısı): `LeaderboardMatrix`, `MemberList`, `ProfileTab`'daki çıplak `<img src={photoURL}>`
+    kullanımlarının HİÇBİRİNDE fallback yoktu (URL eksik/kırıksa hiçbir şey görünmüyordu) — artık
+    üçü de bunu kullanıyor. `MemberList.tsx`'e ayrıca eksik olan boş-durum mesajı ("Henüz üye yok.")
+    eklendi.
+  - **Canlı gösterge rengi primary(altın)'dan accent(kırmızı)'ya çevrildi** (`FixtureCard.tsx`nın
+    `MatchStatusBadge`'i, `CalendarTab.tsx`nın `ResultBadge`'i, `MatchColumnHeader.tsx`) — kırmızı
+    canlı için yaygın yayın konvansiyonu, altın CTA/lider vurgusuna ayrıldı.
+  - **`public/crests/*.png` sıkıştırıldı** (`scripts/compress-crests.mjs`, `sharp`+`pngquant`):
+    18 dosya 1.2MB → ~56KB (**%95 azalma**) — 500px kaynak çözünürlükten fiili render boyutunun
+    (18-28px) 2 katına (64px) küçültüldü. `TeamCrest.tsx`'te kod değişikliği YOK, sadece dosya
+    değişti.
+  - Yeni bağımlılıklar: `framer-motion`, `react-content-loader` (runtime); `sharp` (devDependency,
+    logo + crest sıkıştırma script'lerinde kullanılıyor, `pngquant` de `brew install pngquant` ile
+    kurulu olmalı — kurulu değilse script'ler sharp-only sıkıştırmaya düşer).
+  - Backend'e (Firestore rules/schema, `worker/`, hook'ların döndürdüğü veri şekli) KESİNLİKLE
+    dokunulmadı — sadece render/asset katmanı değişti.
 - Google girişi, topluluk oluşturma/katılma/ayarlar (davet linki paylaşma, üye çıkarma, ayrılma,
   tek-üyeyken silme), Süper Lig puan durumu (zon renkleri — güncel TFF 2026-27 UEFA katılım
   sırasına göre, bkz. `standingsZones.ts`, form ikonları), Tahmin Merkezi (manuel skor girişi —

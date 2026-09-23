@@ -53,15 +53,15 @@ export function GameRulesDialog({
               <tbody>
                 <tr className="border-b border-border/60">
                   <td className="py-2 pl-3 font-medium text-foreground">Galibiyet</td>
-                  <td className="text-center">2</td>
-                  <td className="text-center">3</td>
-                  <td className="py-2 pr-3 text-center font-semibold text-foreground">5</td>
+                  <td className="text-center tabular-nums">2</td>
+                  <td className="text-center tabular-nums">3</td>
+                  <td className="py-2 pr-3 text-center font-semibold tabular-nums text-foreground">5</td>
                 </tr>
                 <tr>
                   <td className="py-2 pl-3 font-medium text-foreground">Beraberlik</td>
-                  <td className="text-center">2</td>
+                  <td className="text-center tabular-nums">2</td>
                   <td className="text-center">—</td>
-                  <td className="py-2 pr-3 text-center font-semibold text-foreground">5</td>
+                  <td className="py-2 pr-3 text-center font-semibold tabular-nums text-foreground">5</td>
                 </tr>
               </tbody>
             </table>

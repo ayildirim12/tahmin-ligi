@@ -5,7 +5,7 @@ import { CreateCommunityDialog } from '@/components/community/CreateCommunityDia
 import { AppShell } from '@/components/layout/AppShell'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
-import { Spinner } from '@/components/ui/Spinner'
+import { CommunityListSkeleton } from '@/components/ui/skeletons/CommunityListSkeleton'
 import { useCommunities } from '@/hooks/useCommunities'
 
 export function CommunityHubPage() {
@@ -24,13 +24,11 @@ export function CommunityHubPage() {
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-10">
-            <Spinner />
-          </div>
+          <CommunityListSkeleton />
         ) : communities.length === 0 ? (
           <Card className="flex flex-col items-center gap-3 px-6 py-10 text-center">
-            <div className="flex size-12 items-center justify-center rounded-full bg-surface-muted">
-              <Users className="size-6 text-muted-foreground" />
+            <div className="flex size-12 items-center justify-center rounded-full bg-primary/10">
+              <Users className="size-6 text-primary" />
             </div>
             <p className="text-sm text-muted-foreground">
               Henüz bir topluluğun yok. Yeni bir topluluk oluştur ya da bir arkadaşının davet

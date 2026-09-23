@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { GameweekSwitcher } from '@/components/leaderboard/GameweekSwitcher'
 import { Card } from '@/components/ui/Card'
-import { Spinner } from '@/components/ui/Spinner'
+import { MatchRowSkeleton } from '@/components/ui/skeletons/MatchRowSkeleton'
 import { TeamCrest } from '@/components/standings/TeamCrest'
 import { useActiveCommunity } from '@/contexts/ActiveCommunityContext'
 import { useAuth } from '@/contexts/AuthContext'
@@ -31,10 +31,10 @@ function ResultBadge({ match }: { match: Match }) {
     : `${match.finalHomeGoals ?? 0}-${match.finalAwayGoals ?? 0}`
 
   return (
-    <span className={cn('flex items-center gap-1.5 font-semibold', isLive ? 'text-primary' : 'text-foreground')}>
+    <span className={cn('flex items-center gap-1.5 font-semibold', isLive ? 'text-accent' : 'text-foreground')}>
       {isLive ? (match.status === 'HT' ? 'Devre arası' : `Canlı · ${match.elapsedMinutes ?? 0}'`) : 'Bitti'}
       <span className="tabular-nums">{score}</span>
-      {isLive && <span className="size-1.5 animate-pulse rounded-full bg-primary" />}
+      {isLive && <span className="size-1.5 animate-pulse rounded-full bg-accent" />}
     </span>
   )
 }
@@ -67,8 +67,10 @@ export function CalendarTab() {
       )}
 
       {loading ? (
-        <div className="flex justify-center py-10">
-          <Spinner />
+        <div className="flex flex-col gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <MatchRowSkeleton key={i} />
+          ))}
         </div>
       ) : matches.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">

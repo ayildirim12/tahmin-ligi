@@ -6,6 +6,7 @@ import { BlockedByOwnedCommunitiesError, deleteAccount } from '@/firebase/accoun
 import { useCommunities } from '@/hooks/useCommunities'
 import { getLastCommunityId } from '@/lib/lastCommunity'
 import { AppShell } from '@/components/layout/AppShell'
+import { MemberAvatar } from '@/components/community/MemberAvatar'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Dialog } from '@/components/ui/Dialog'
@@ -44,9 +45,7 @@ export function ProfileTab() {
     <AppShell communityId={getLastCommunityId()}>
       <div className="mx-auto flex max-w-sm flex-col gap-5 pt-6">
         <Card className="flex items-center gap-3 px-4 py-4">
-          {user.photoURL && (
-            <img src={user.photoURL} alt="" className="size-12 rounded-full" referrerPolicy="no-referrer" />
-          )}
+          <MemberAvatar photoURL={user.photoURL} displayName={user.displayName} size={48} />
           <div className="min-w-0">
             <p className="truncate font-semibold">{user.displayName}</p>
             <p className="truncate text-xs text-muted-foreground">{user.email}</p>

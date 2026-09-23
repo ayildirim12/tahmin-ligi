@@ -1,6 +1,6 @@
 import { StandingsTable } from '@/components/standings/StandingsTable'
 import { ZoneLegend } from '@/components/standings/ZoneLegend'
-import { Spinner } from '@/components/ui/Spinner'
+import { StandingsTableSkeleton } from '@/components/ui/skeletons/StandingsTableSkeleton'
 import { useStandings } from '@/hooks/useStandings'
 import { useTeams } from '@/hooks/useTeams'
 import { formatRelativeToNow } from '@/lib/time'
@@ -19,9 +19,7 @@ export function StandingsTab() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-10">
-          <Spinner />
-        </div>
+        <StandingsTableSkeleton />
       ) : rows.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">
           Puan durumu henüz senkronize edilmedi.

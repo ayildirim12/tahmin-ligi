@@ -21,7 +21,7 @@ const variantClasses: Record<Variant, string> = {
 }
 
 const sizeClasses: Record<Size, string> = {
-  sm: 'h-8 px-3 text-sm rounded-md gap-1.5',
+  sm: 'h-8 px-3 text-sm rounded-lg gap-1.5',
   md: 'h-10 px-4 text-sm rounded-lg gap-2',
   lg: 'h-12 px-6 text-base rounded-lg gap-2',
 }
@@ -35,7 +35,8 @@ export function Button({
   return (
     <button
       className={cn(
-        'inline-flex items-center justify-center font-medium transition-colors disabled:pointer-events-none disabled:bg-surface-muted disabled:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'inline-flex items-center justify-center font-medium transition-[color,background-color,filter,transform] active:scale-95 disabled:pointer-events-none disabled:bg-surface-muted disabled:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        variant === 'google' ? '' : 'hover:brightness-110 active:brightness-95',
         variantClasses[variant],
         sizeClasses[size],
         className,

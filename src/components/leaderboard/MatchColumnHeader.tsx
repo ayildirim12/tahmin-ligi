@@ -1,4 +1,5 @@
 import { TeamCrest } from '@/components/standings/TeamCrest'
+import { cn } from '@/lib/cn'
 import { formatKickoff } from '@/lib/time'
 import type { Match, Team } from '@/shared/types'
 
@@ -27,7 +28,12 @@ export function MatchColumnHeader({
           <TeamCrest team={awayTeam} size={18} />
         </div>
         {score ? (
-          <span className={isLive ? 'text-[11px] font-bold text-primary' : 'text-[11px] text-muted-foreground'}>
+          <span
+            className={cn(
+              'text-[11px] tabular-nums',
+              isLive ? 'font-bold text-accent' : 'text-muted-foreground',
+            )}
+          >
             {score}
             {isLive && ' ●'}
           </span>

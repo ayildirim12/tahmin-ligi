@@ -30,10 +30,10 @@ function MatchStatusBadge({ match }: { match: Match }) {
     : `${match.finalHomeGoals ?? 0}-${match.finalAwayGoals ?? 0}`
 
   return (
-    <span className={cn('flex items-center gap-1.5 font-semibold', isLive ? 'text-primary' : 'text-foreground')}>
+    <span className={cn('flex items-center gap-1.5 font-semibold', isLive ? 'text-accent' : 'text-foreground')}>
       {isLive ? (match.status === 'HT' ? 'Devre arası' : `Canlı · ${match.elapsedMinutes ?? 0}'`) : 'Bitti'}
       <span className="tabular-nums">{score}</span>
-      {isLive && <span className="size-1.5 animate-pulse rounded-full bg-primary" />}
+      {isLive && <span className="size-1.5 animate-pulse rounded-full bg-accent" />}
     </span>
   )
 }
