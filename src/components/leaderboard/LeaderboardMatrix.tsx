@@ -19,6 +19,7 @@ export function LeaderboardMatrix({
   teams: Record<string, Team>
 }) {
   const { user } = useAuth()
+  const [sortKey, setSortKey] = useState<'total' | 'week'>('total')
   const [sortDesc, setSortDesc] = useState(true)
 
   const rows = useMemo(() => {
@@ -35,8 +36,23 @@ export function LeaderboardMatrix({
         )
         return { member, cells, weekPoints }
       })
-      .sort((a, b) => (sortDesc ? b.weekPoints - a.weekPoints : a.weekPoints - b.weekPoints))
-  }, [members, matches, predictionsByKey, sortDesc, user?.uid])
+      .sort((a, b) => {
+        const diff =
+          sortKey === 'total'
+            ? a.member.totalPoints - b.member.totalPoints
+            : a.weekPoints - b.weekPoints
+        return sortDesc ? -diff : diff
+      })
+  }, [members, matches, predictionsByKey, sortKey, sortDesc, user?.uid])
+
+  const toggleSort = (key: 'total' | 'week') => {
+    if (sortKey === key) {
+      setSortDesc((d) => !d)
+    } else {
+      setSortKey(key)
+      setSortDesc(true)
+    }
+  }
 
   return (
     <div className="overflow-x-auto rounded-xl border border-border">
@@ -56,14 +72,18 @@ export function LeaderboardMatrix({
             ))}
             <SortableHeaderCell
               label="Hafta"
-              active
+              active={sortKey === 'week'}
               direction={sortDesc ? 'desc' : 'asc'}
-              onClick={() => setSortDesc((d) => !d)}
+              onClick={() => toggleSort('week')}
               className="w-14"
             />
-            <th className="w-14 py-2.5 pr-3 text-center font-medium text-muted-foreground">
-              Toplam
-            </th>
+            <SortableHeaderCell
+              label="Toplam"
+              active={sortKey === 'total'}
+              direction={sortDesc ? 'desc' : 'asc'}
+              onClick={() => toggleSort('total')}
+              className="w-14 pr-3"
+            />
           </tr>
         </thead>
         <tbody>
