@@ -9,24 +9,23 @@ export function BrandLink({ className }: { className?: string }) {
     <Link
       to="/"
       aria-label="Tahmin Ligi"
-      className={cn('inline-flex items-center rounded-lg px-1 py-1 transition-opacity hover:opacity-80', className)}
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-lg px-1 py-1 transition-opacity hover:opacity-80',
+        className,
+      )}
     >
-      {/* Icon-only on narrow phones (shares header space with the community switcher there);
-          the full logo (crest + wordmark, baked into the image) once there's room. */}
       <img
-        src="/brand/mark-64.png"
+        // ?v=2 busts the browser cache for the earlier, wrongly-cropped mark.
+        src="/brand/mark-64.png?v=2"
         alt=""
-        width={64}
-        height={64}
-        className="size-6 shrink-0 object-contain sm:hidden"
+        width={128}
+        height={128}
+        className="size-10 shrink-0 object-contain"
       />
-      <img
-        src="/brand/logo-lockup.png"
-        alt=""
-        width={300}
-        height={240}
-        className="hidden h-10 w-auto object-contain sm:block"
-      />
+      {/* The badge carries the wordmark too, but it is unreadable at header
+          size — so the name is spelled out beside it, except on narrow phones
+          where the header also has to fit the community switcher. */}
+      <span className="hidden font-display text-sm tracking-wide sm:inline">Tahmin Ligi</span>
     </Link>
   )
 }

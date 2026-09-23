@@ -10,11 +10,14 @@ compression, the `pngquant` CLI (`brew install pngquant`) — falls back to
 Pillow's own PNG compression if pngquant isn't on PATH.
 
 Produces (into public/brand/):
-  - logo-full-512.png / logo-full-1024.png  — the full badge incl. wordmark, hero use
-  - logo-lockup.png                         — full wordmark, tail flourish cropped off, navbar use
-  - mark-64.png                             — crown+ball only, no wordmark, favicon use
-  - favicon-32.png / favicon-16.png         — same crop as mark-64, favicon sizes
-  - apple-touch-icon.png                    — same crop, opaque (Apple ignores alpha)
+  - logo-full-512.png / logo-full-1024.png  — the badge at hero sizes
+  - mark-64.png                             — the same badge, squared, for the navbar
+  - favicon-32.png / favicon-16.png         — the same badge, squared, favicon sizes
+  - apple-touch-icon.png                    — the same badge, opaque (Apple ignores alpha)
+
+Every export is the WHOLE badge, never a crop of it: the artwork is one
+integrated crest whose ball is deliberately overlapped by the wordmark
+banner, so any "just the crown and ball" crop slices the ball in half.
 
 The source is a flat opaque PNG with a solid near-black background baked in
 (no alpha) — background removal here is a corner-seeded flood fill (NOT a
@@ -32,12 +35,6 @@ from PIL import Image, ImageFilter
 import numpy as np
 
 OUT_DIR = Path(__file__).resolve().parent.parent / "public" / "brand"
-
-# Crop rectangles tuned by eye against this specific source image's layout
-# (crown+ball+prediction-card cluster sits above the wordmark ribbon).
-# Re-tune these if a differently-composed source logo is ever substituted.
-MARK_CROP = (230, 0, 832, 580)  # crown + ball only, excludes the wordmark banner
-LOCKUP_CROP_BOTTOM = 825  # keeps crown+ball+wordmark, cuts the descending tail flourish
 
 
 def flood_fill_background(img: Image.Image, thresh=30, blur_radius=1.5) -> Image.Image:
@@ -95,22 +92,16 @@ def main():
     full = flood_fill_background(src)
     full = full.crop(full.getbbox())
 
-    mark = full.crop(MARK_CROP)
-    w, h = mark.size
-    side = max(w, h)
-    square = Image.new("RGBA", (side, side), (0, 0, 0, 0))
-    square.paste(mark, ((side - w) // 2, (side - h) // 2), mark)
-
+    # Square canvas with transparent padding, so favicons and the navbar mark
+    # keep the badge's own proportions instead of stretching it.
     fw, fh = full.size
+    side = max(fw, fh)
+    square = Image.new("RGBA", (side, side), (0, 0, 0, 0))
+    square.paste(full, ((side - fw) // 2, (side - fh) // 2), full)
+
     save_compressed(full, OUT_DIR / "logo-full-1024.png", (1024, round(1024 * fh / fw)))
     save_compressed(full, OUT_DIR / "logo-full-512.png", (512, round(512 * fh / fw)))
-
-    lockup = full.crop((0, 0, fw, LOCKUP_CROP_BOTTOM))
-    lockup = lockup.crop(lockup.getbbox())
-    lw, lh = lockup.size
-    save_compressed(lockup, OUT_DIR / "logo-lockup.png", (300, round(300 * lh / lw)))
-
-    save_compressed(square, OUT_DIR / "mark-64.png", (64, 64))
+    save_compressed(square, OUT_DIR / "mark-64.png", (128, 128))
     save_compressed(square, OUT_DIR / "favicon-32.png", (32, 32))
     save_compressed(square, OUT_DIR / "favicon-16.png", (16, 16))
 
