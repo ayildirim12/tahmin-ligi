@@ -11,7 +11,8 @@ Pillow's own PNG compression if pngquant isn't on PATH.
 
 Produces (into public/brand/):
   - logo-full-512.png / logo-full-1024.png  — the full badge incl. wordmark, hero use
-  - mark-64.png                             — crown+ball only, no wordmark, navbar use
+  - logo-lockup.png                         — full wordmark, tail flourish cropped off, navbar use
+  - mark-64.png                             — crown+ball only, no wordmark, favicon use
   - favicon-32.png / favicon-16.png         — same crop as mark-64, favicon sizes
   - apple-touch-icon.png                    — same crop, opaque (Apple ignores alpha)
 
@@ -36,6 +37,7 @@ OUT_DIR = Path(__file__).resolve().parent.parent / "public" / "brand"
 # (crown+ball+prediction-card cluster sits above the wordmark ribbon).
 # Re-tune these if a differently-composed source logo is ever substituted.
 MARK_CROP = (230, 0, 832, 580)  # crown + ball only, excludes the wordmark banner
+LOCKUP_CROP_BOTTOM = 825  # keeps crown+ball+wordmark, cuts the descending tail flourish
 
 
 def flood_fill_background(img: Image.Image, thresh=30, blur_radius=1.5) -> Image.Image:
@@ -102,6 +104,12 @@ def main():
     fw, fh = full.size
     save_compressed(full, OUT_DIR / "logo-full-1024.png", (1024, round(1024 * fh / fw)))
     save_compressed(full, OUT_DIR / "logo-full-512.png", (512, round(512 * fh / fw)))
+
+    lockup = full.crop((0, 0, fw, LOCKUP_CROP_BOTTOM))
+    lockup = lockup.crop(lockup.getbbox())
+    lw, lh = lockup.size
+    save_compressed(lockup, OUT_DIR / "logo-lockup.png", (300, round(300 * lh / lw)))
+
     save_compressed(square, OUT_DIR / "mark-64.png", (64, 64))
     save_compressed(square, OUT_DIR / "favicon-32.png", (32, 32))
     save_compressed(square, OUT_DIR / "favicon-16.png", (16, 16))
