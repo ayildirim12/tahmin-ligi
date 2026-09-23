@@ -45,11 +45,11 @@ export function AuthHeroShell({
           <div className="flex flex-col items-center gap-4">
             {icon ?? (
               <img
-                src="/brand/mark-64.png"
+                src="/brand/logo-full-512.png"
                 alt=""
-                width={64}
-                height={64}
-                className="size-20 object-contain drop-shadow-lg"
+                width={512}
+                height={541}
+                className="h-auto w-36 object-contain drop-shadow-lg"
               />
             )}
             <div className="flex flex-col items-center gap-1.5">
