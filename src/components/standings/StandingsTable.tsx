@@ -12,7 +12,7 @@ export function StandingsTable({
 }) {
   return (
     <div className="overflow-x-auto rounded-xl border border-border">
-      <table className="w-full min-w-[640px] border-collapse text-sm">
+      <table className="min-w-[640px] border-collapse text-sm">
         <thead>
           <tr className="border-b border-border text-xs text-muted-foreground">
             <th className="w-10 py-2.5 pl-3 text-left font-medium">#</th>

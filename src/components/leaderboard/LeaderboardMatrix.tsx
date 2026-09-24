@@ -56,7 +56,7 @@ export function LeaderboardMatrix({
 
   return (
     <div className="overflow-x-auto rounded-xl border border-border">
-      <table className="w-full min-w-[560px] border-collapse text-sm">
+      <table className="min-w-[560px] border-collapse text-sm">
         <thead>
           <tr className="border-b border-border text-xs text-muted-foreground">
             <th className="sticky left-0 min-w-[140px] bg-surface py-2.5 pl-3 text-left font-medium">
