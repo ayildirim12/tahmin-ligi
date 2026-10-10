@@ -1,14 +1,17 @@
 import { FormBadge } from './FormBadge'
 import { TeamCrest } from './TeamCrest'
 import { zoneForPosition } from '@/lib/standingsZones'
+import type { LiveInfo } from '@/lib/liveStandings'
 import type { StandingsRow, Team } from '@/shared/types'
 
 export function StandingsTable({
   rows,
   teams,
+  liveTeamIds,
 }: {
   rows: StandingsRow[]
   teams: Record<string, Team>
+  liveTeamIds?: Map<string, LiveInfo>
 }) {
   return (
     <div className="overflow-x-auto rounded-xl border border-border">
@@ -34,6 +37,10 @@ export function StandingsTable({
           {rows.map((row) => {
             const zone = zoneForPosition(row.position)
             const team = teams[row.teamId]
+            const live = liveTeamIds?.get(row.teamId)
+            // Like Google: the score chip's background shows how the live match is going for this team.
+            const chipBg =
+              live?.result === 'W' ? 'bg-green-600' : live?.result === 'L' ? 'bg-red-600' : 'bg-white/20'
             return (
               <tr key={row.teamId} className="border-b border-border/60 last:border-0 hover:bg-surface-muted/50">
                 <td className="relative py-2.5 pl-3 text-left font-medium">
@@ -49,6 +56,14 @@ export function StandingsTable({
                   <div className="flex items-center gap-2">
                     <TeamCrest team={team} size={20} />
                     <span className="truncate">{team?.shortName ?? row.teamId}</span>
+                    {live && (
+                      <>
+                        <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-red-500" title="Maç oynanıyor" />
+                        <span className={`rounded px-1.5 py-0.5 text-xs font-bold tabular-nums text-white ${chipBg}`}>
+                          {live.score}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </td>
                 <td className="text-center tabular-nums text-muted-foreground">{row.played}</td>
@@ -58,7 +73,7 @@ export function StandingsTable({
                 <td className="text-center tabular-nums text-muted-foreground">{row.goalsFor}</td>
                 <td className="text-center tabular-nums text-muted-foreground">{row.goalsAgainst}</td>
                 <td className="text-center tabular-nums text-muted-foreground">{row.goalDiff}</td>
-                <td className="text-center font-display text-base tabular-nums">{row.points}</td>
+                <td className={`text-center font-display text-base tabular-nums`}>{row.points}</td>
                 <td className="py-2.5 pr-3">
                   <div className="flex items-center justify-center gap-1">
                     {row.form.map((result, i) => (
