@@ -93,7 +93,11 @@ async function main() {
     }
 
     console.log(`[sync] sleeping ${intervalSeconds}s before next poll (requests used today: ${requestsUsedToday})`)
-    await sleep(intervalSeconds * 1000)
+    // Never sleep past the run budget: the job has a hard 5-minute timeout, and an
+    // over-long final sleep got the run cancelled before its end-of-run cleanup.
+    const msLeft = RUN_BUDGET_MS - (Date.now() - startedAt)
+    if (msLeft <= 0) break
+    await sleep(Math.min(intervalSeconds * 1000, msLeft))
   }
 
   await runLockMaintenance()
