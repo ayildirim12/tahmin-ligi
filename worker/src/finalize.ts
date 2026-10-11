@@ -1,6 +1,23 @@
 import { FieldValue } from 'firebase-admin/firestore'
 import { computeMatchPoints, isTendencyOrBetter } from '../../src/shared/scoring.ts'
+import { Timestamp } from 'firebase-admin/firestore'
 import { db } from './firestoreAdmin.ts'
+
+// Reading every FINISHED match of the season on each run exhausted Firestore's free read quota;
+// anything that finished unfinalized and kicked off more than this long ago is not worth
+// rescanning for (an outage that long needs a manual run).
+const FINALIZE_LOOKBACK_MS = 14 * 24 * 60 * 60_000
+
+async function recentFinishedUnfinalized() {
+  const now = Timestamp.now()
+  const since = Timestamp.fromMillis(now.toMillis() - FINALIZE_LOOKBACK_MS)
+  const snap = await db
+    .collection('matches')
+    .where('kickoffAt', '>', since)
+    .where('kickoffAt', '<=', now)
+    .get()
+  return snap.docs.filter((d) => d.data().status === 'FINISHED' && d.data().pointsFinalized !== true)
+}
 
 /**
  * Finalizes points for every FINISHED match that hasn't been finalized yet
@@ -11,7 +28,7 @@ import { db } from './firestoreAdmin.ts'
 export async function finalizeFinishedMatches(explicitMatchIds?: string[]): Promise<void> {
   const candidates = explicitMatchIds
     ? await Promise.all(explicitMatchIds.map((id) => db.collection('matches').doc(id).get()))
-    : (await db.collection('matches').where('status', '==', 'FINISHED').get()).docs
+    : await recentFinishedUnfinalized()
 
   for (const matchDoc of candidates) {
     if (!matchDoc.exists) continue

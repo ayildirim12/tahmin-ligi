@@ -1,3 +1,4 @@
+import { Timestamp } from 'firebase-admin/firestore'
 import { db } from './firestoreAdmin.ts'
 import { syncFixtures } from './fixtures.ts'
 import { finalizeFinishedMatches } from './finalize.ts'
@@ -42,11 +43,20 @@ async function runDueHousekeeping(): Promise<void> {
 }
 
 async function getLiveCandidates() {
-  const snap = await db.collection('matches').where('status', 'in', ['SCHEDULED', 'LIVE', 'HT']).get()
-  return snap.docs.map((d) => ({
-    kickoffAtMs: d.data().kickoffAt.toMillis(),
-    status: d.data().status as string,
-  }))
+  // Matches that could be live now or start later today. Querying the whole table for
+  // status in (SCHEDULED, LIVE, HT) re-read the entire remaining season on every run.
+  const now = Date.now()
+  const snap = await db
+    .collection('matches')
+    .where('kickoffAt', '>', Timestamp.fromMillis(now - 4 * 60 * 60_000))
+    .where('kickoffAt', '<', Timestamp.fromMillis(now + 24 * 60 * 60_000))
+    .get()
+  return snap.docs
+    .filter((d) => ['SCHEDULED', 'LIVE', 'HT'].includes(d.data().status))
+    .map((d) => ({
+      kickoffAtMs: d.data().kickoffAt.toMillis(),
+      status: d.data().status as string,
+    }))
 }
 
 async function main() {
