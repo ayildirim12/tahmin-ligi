@@ -8,6 +8,7 @@
   },
   "scripts": {
     "sync": "tsx src/sync.ts",
+    "discover": "tsx src/discover.ts",
     "seed:local": "tsx src/seed/localSeed.ts"
   },
   "dependencies": {

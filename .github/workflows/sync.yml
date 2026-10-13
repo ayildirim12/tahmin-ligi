@@ -6,10 +6,14 @@ on:
     # not on how sub-5-minute freshness happens (that comes from the adaptive
     # in-run poll loop in worker/src/sync.ts when a match is live/imminent).
     - cron: '*/5 * * * *'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'npm script to run (default: sync)'
+        default: 'sync'
 
 concurrency:
-  group: superlig-sync
+  group: superlig-sync-${{ github.event.inputs.task || 'sync' }}
   cancel-in-progress: false
 
 jobs:
@@ -40,8 +44,9 @@ jobs:
 
       - name: Run sync
         working-directory: worker
-        run: npm run sync
+        run: npm run "$TASK"
         env:
+          TASK: ${{ github.event.inputs.task || 'sync' }}
           HIGHLIGHTLY_API_KEY: ${{ secrets.HIGHLIGHTLY_API_KEY }}
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/service-account.json
           SUPERLIG_LEAGUE_ID: ${{ vars.SUPERLIG_LEAGUE_ID }}
