@@ -63,7 +63,7 @@ export function LoginPage() {
   return (
     <AuthHeroShell
       title="Giriş yap"
-      description="Süper Lig maçlarını arkadaşlarınla tahmin et, topluluk sıralamasında yerini al."
+      description="Süper Lig ve Şampiyonlar Ligi maçlarını arkadaşlarınla tahmin et, topluluk sıralamasında yerini al."
       showBrandLink
     >
       <div className="flex w-full flex-col items-center gap-3">

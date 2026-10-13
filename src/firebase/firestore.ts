@@ -6,6 +6,8 @@ import {
   serverTimestamp,
   setDoc,
 } from 'firebase/firestore'
+import { META_DOC_ID, STANDINGS_DOC_ID } from '@/lib/competitions'
+import type { CompetitionId } from '@/shared/types'
 import { db } from './config'
 
 export const usersCol = collection(db, 'users')
@@ -44,12 +46,12 @@ export function userDoc(uid: string) {
   return doc(db, 'users', uid)
 }
 
-export function standingsDoc() {
-  return doc(db, 'standings', 'superlig')
+export function standingsDoc(competition: CompetitionId) {
+  return doc(db, 'standings', STANDINGS_DOC_ID[competition])
 }
 
-export function configDoc() {
-  return doc(db, 'meta', 'config')
+export function configDoc(competition: CompetitionId) {
+  return doc(db, 'meta', META_DOC_ID[competition])
 }
 
 /**

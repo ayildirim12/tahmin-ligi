@@ -3,7 +3,8 @@ import { GameweekSwitcher } from '@/components/leaderboard/GameweekSwitcher'
 import { LeaderboardMatrix } from '@/components/leaderboard/LeaderboardMatrix'
 import { LeaderboardMatrixSkeleton } from '@/components/ui/skeletons/LeaderboardMatrixSkeleton'
 import { useActiveCommunity } from '@/contexts/ActiveCommunityContext'
-import { useConfig } from '@/hooks/useConfig'
+import { useCompetition } from '@/contexts/CompetitionContext'
+import { gameweekLabel, useConfig } from '@/hooks/useConfig'
 import { useGameweekMatches } from '@/hooks/useGameweekMatches'
 import { useGameweekPredictions } from '@/hooks/useGameweekPredictions'
 import { useMembers } from '@/hooks/useMembers'
@@ -11,6 +12,7 @@ import { useTeams } from '@/hooks/useTeams'
 
 export function LeaderboardTab() {
   const { communityId } = useActiveCommunity()
+  const { competition } = useCompetition()
   const { config } = useConfig()
   const { members, loading: membersLoading } = useMembers(communityId)
   const { teams } = useTeams()
@@ -32,6 +34,7 @@ export function LeaderboardTab() {
             gameweek={activeGameweek}
             onChange={setGameweek}
             maxGameweek={config?.currentGameweek ?? activeGameweek}
+            label={gameweekLabel(config, activeGameweek)}
           />
         </div>
       )}
@@ -50,6 +53,7 @@ export function LeaderboardTab() {
           matches={matches}
           predictionsByKey={predictionsByKey}
           teams={teams}
+          competition={competition}
         />
       )}
     </div>

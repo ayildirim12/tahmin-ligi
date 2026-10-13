@@ -2,7 +2,7 @@ import { FixtureCard } from '@/components/predictions/FixtureCard'
 import { MatchRowSkeleton } from '@/components/ui/skeletons/MatchRowSkeleton'
 import { useActiveCommunity } from '@/contexts/ActiveCommunityContext'
 import { useCommunities } from '@/hooks/useCommunities'
-import { useConfig } from '@/hooks/useConfig'
+import { gameweekLabel, useConfig } from '@/hooks/useConfig'
 import { useGameweekMatches } from '@/hooks/useGameweekMatches'
 import { useTeams } from '@/hooks/useTeams'
 
@@ -19,7 +19,9 @@ export function PredictionCenterTab() {
     <div className="flex flex-col gap-4 pt-2">
       <div>
         <h1 className="text-lg font-bold">Tahmin Merkezi</h1>
-        {config && <p className="text-xs text-muted-foreground">{config.currentGameweek}. hafta</p>}
+        {config && (
+          <p className="text-xs text-muted-foreground">{gameweekLabel(config, config.currentGameweek)}</p>
+        )}
       </div>
 
       {loading ? (

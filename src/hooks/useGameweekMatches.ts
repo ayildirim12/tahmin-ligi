@@ -1,12 +1,15 @@
 import { onSnapshot, orderBy, query, where } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
+import { useCompetition } from '@/contexts/CompetitionContext'
 import { matchesCol } from '@/firebase/firestore'
+import { parseCompetition } from '@/lib/competitions'
 import type { Match } from '@/shared/types'
 
 function mapMatch(id: string, data: Record<string, unknown>): Match {
   const ts = (v: unknown) => (v as { toMillis: () => number } | null)?.toMillis?.() ?? 0
   return {
     id,
+    competition: parseCompetition(data.competition),
     apiFixtureId: data.apiFixtureId as number,
     season: data.season as string,
     gameweek: data.gameweek as number,
@@ -25,6 +28,7 @@ function mapMatch(id: string, data: Record<string, unknown>): Match {
 }
 
 export function useGameweekMatches(gameweek: number | null) {
+  const { competition } = useCompetition()
   const [matches, setMatches] = useState<Match[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -36,7 +40,12 @@ export function useGameweekMatches(gameweek: number | null) {
     }
 
     setLoading(true)
-    const q = query(matchesCol, where('gameweek', '==', gameweek), orderBy('kickoffAt', 'asc'))
+    const q = query(
+      matchesCol,
+      where('competition', '==', competition),
+      where('gameweek', '==', gameweek),
+      orderBy('kickoffAt', 'asc'),
+    )
     const unsubscribe = onSnapshot(
       q,
       (snap) => {
@@ -49,7 +58,7 @@ export function useGameweekMatches(gameweek: number | null) {
       },
     )
     return unsubscribe
-  }, [gameweek])
+  }, [gameweek, competition])
 
   return { matches, loading }
 }

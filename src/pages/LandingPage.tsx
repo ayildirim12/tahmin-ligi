@@ -25,7 +25,7 @@ export function LandingPage() {
   return (
     <AuthHeroShell
       title="Tahmin Ligi"
-      description="Süper Lig maçlarını arkadaşlarınla tahmin et, topluluk sıralamasında yerini al."
+      description="Süper Lig ve Şampiyonlar Ligi maçlarını arkadaşlarınla tahmin et, topluluk sıralamasında yerini al."
       featureChips
     >
       <div className="flex w-full flex-col gap-2.5">

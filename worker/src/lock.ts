@@ -10,7 +10,7 @@ import { db } from './firestoreAdmin.ts'
 // kickoff has passed the rules reject new/edited predictions, so one pass after kickoff is
 // enough. Scanning the whole season on every 5-minute run blew through Firestore's free
 // 50k-reads/day quota.
-const LOCK_LOOKBACK_MS = 7 * 24 * 60 * 60_000
+const LOCK_LOOKBACK_MS = 3 * 24 * 60 * 60_000
 
 export async function runLockMaintenance(): Promise<void> {
   const now = Timestamp.now()

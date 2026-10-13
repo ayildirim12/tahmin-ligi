@@ -3,20 +3,23 @@ import { MatchColumnHeader } from './MatchColumnHeader'
 import { PredictionCell } from './PredictionCell'
 import { SortableHeaderCell } from './SortableHeaderCell'
 import { useAuth } from '@/contexts/AuthContext'
+import { memberTotalPoints } from '@/lib/competitions'
 import { computeCellState } from '@/lib/liveScoring'
 import { predictionKey } from '@/hooks/useGameweekPredictions'
-import type { CommunityMember, Match, Prediction, Team } from '@/shared/types'
+import type { CommunityMember, CompetitionId, Match, Prediction, Team } from '@/shared/types'
 
 export function LeaderboardMatrix({
   members,
   matches,
   predictionsByKey,
   teams,
+  competition = 'superlig',
 }: {
   members: CommunityMember[]
   matches: Match[]
   predictionsByKey: Record<string, Prediction>
   teams: Record<string, Team>
+  competition?: CompetitionId
 }) {
   const { user } = useAuth()
   const [sortKey, setSortKey] = useState<'total' | 'week'>('total')
@@ -39,11 +42,11 @@ export function LeaderboardMatrix({
       .sort((a, b) => {
         const diff =
           sortKey === 'total'
-            ? a.member.totalPoints - b.member.totalPoints
+            ? memberTotalPoints(a.member, competition) - memberTotalPoints(b.member, competition)
             : a.weekPoints - b.weekPoints
         return sortDesc ? -diff : diff
       })
-  }, [members, matches, predictionsByKey, sortKey, sortDesc, user?.uid])
+  }, [members, matches, predictionsByKey, sortKey, sortDesc, user?.uid, competition])
 
   const toggleSort = (key: 'total' | 'week') => {
     if (sortKey === key) {
@@ -109,7 +112,7 @@ export function LeaderboardMatrix({
               ))}
               <td className="py-2 text-center font-display text-base tabular-nums">{weekPoints}</td>
               <td className="py-2 pr-3 text-center font-display text-base tabular-nums text-muted-foreground">
-                {member.totalPoints}
+                {memberTotalPoints(member, competition)}
               </td>
             </tr>
           ))}

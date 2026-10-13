@@ -1,3 +1,5 @@
+export type CompetitionId = 'superlig' | 'ucl'
+
 export type MatchStatus =
   | 'SCHEDULED'
   | 'LIVE'
@@ -20,6 +22,7 @@ export interface Team {
 
 export interface Match {
   id: string
+  competition: CompetitionId
   apiFixtureId: number
   season: string
   gameweek: number
@@ -57,6 +60,10 @@ export interface CommunityMember {
   totalPoints: number
   totalPredictions: number
   winsCount: number
+  // Champions League has its own, separate totals (the three above are Süper Lig only).
+  uclTotalPoints: number
+  uclTotalPredictions: number
+  uclWinsCount: number
   lastUpdatedMatchId: string | null
 }
 

@@ -22,6 +22,9 @@ export function useMembers(communityId: string) {
               totalPoints: data.totalPoints ?? 0,
               totalPredictions: data.totalPredictions ?? 0,
               winsCount: data.winsCount ?? 0,
+              uclTotalPoints: data.uclTotalPoints ?? 0,
+              uclTotalPredictions: data.uclTotalPredictions ?? 0,
+              uclWinsCount: data.uclWinsCount ?? 0,
               lastUpdatedMatchId: data.lastUpdatedMatchId ?? null,
             } satisfies CommunityMember
           }),

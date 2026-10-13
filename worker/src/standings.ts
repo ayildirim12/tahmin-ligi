@@ -1,5 +1,6 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { fetchStandings } from './highlightlyApi.ts'
+import { competitionOf, type Competition } from './competitions.ts'
 import { db } from './firestoreAdmin.ts'
 
 type FormResult = 'W' | 'D' | 'L'
@@ -12,7 +13,7 @@ type FormResult = 'W' | 'D' | 'L'
  * built in memory; cheap even for a full season (~150-300 docs), and only runs on the
  * low-frequency housekeeping cadence alongside the rest of syncStandings.
  */
-async function computeFormByTeam(): Promise<Record<string, FormResult[]>> {
+async function computeFormByTeam(competition: Competition): Promise<Record<string, FormResult[]>> {
   const finished = await db
     .collection('matches')
     .where('status', '==', 'FINISHED')
@@ -22,6 +23,7 @@ async function computeFormByTeam(): Promise<Record<string, FormResult[]>> {
   const byTeam: Record<string, FormResult[]> = {}
   for (const doc of finished.docs) {
     const m = doc.data()
+    if (competitionOf(m) !== competition.id) continue
     if (m.finalHomeGoals === null || m.finalAwayGoals === null) continue
 
     const homeResult: FormResult =
@@ -39,12 +41,12 @@ async function computeFormByTeam(): Promise<Record<string, FormResult[]>> {
   return byTeam
 }
 
-export async function syncStandings(): Promise<void> {
-  const [rows, formByTeam] = await Promise.all([fetchStandings(), computeFormByTeam()])
+export async function syncStandings(competition: Competition): Promise<void> {
+  const [rows, formByTeam] = await Promise.all([fetchStandings(competition.leagueId), computeFormByTeam(competition)])
 
   await db
     .collection('standings')
-    .doc('superlig')
+    .doc(competition.standingsDocId)
     .set({
       updatedAt: Timestamp.now(),
       rows: rows.map((row) => ({
@@ -64,6 +66,6 @@ export async function syncStandings(): Promise<void> {
 
   await db
     .collection('meta')
-    .doc('config')
+    .doc(competition.metaDocId)
     .set({ lastStandingsSyncAt: Timestamp.now(), updatedAt: Timestamp.now() }, { merge: true })
 }

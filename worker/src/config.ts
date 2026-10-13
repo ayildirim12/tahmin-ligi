@@ -9,6 +9,8 @@ export const config = {
   // Highlightly's own numeric league id — UNVERIFIED placeholder, confirm via
   // findLeagueId('Super Lig', 'TR') once a real API key is available (see worker/AGENTS.md §4).
   leagueId: Number(process.env.SUPERLIG_LEAGUE_ID ?? '0'),
+  // UEFA Champions League in Highlightly (found via worker/src/discover.ts) — same season number as the league.
+  uclLeagueId: Number(process.env.UCL_LEAGUE_ID ?? '2486'),
   season: process.env.SUPERLIG_SEASON ?? String(new Date().getFullYear()),
   usingEmulator: Boolean(process.env.FIRESTORE_EMULATOR_HOST),
 }

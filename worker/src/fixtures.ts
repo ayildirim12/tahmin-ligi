@@ -1,22 +1,25 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { config } from './config.ts'
+import type { Competition } from './competitions.ts'
 import type { HlMatch } from './highlightlyApi.ts'
 import { db } from './firestoreAdmin.ts'
 import { mapApiStatus, parseScore } from './statusMap.ts'
+import { planUclFixtures, type PlannedFixture, type UclStage } from './ucl.ts'
 
 function parseRound(round: string): number {
   const match = round.match(/(\d+)/)
   return match ? Number(match[1]) : 0
 }
 
-function fixtureToMatchDoc(fixture: HlMatch) {
+function fixtureToMatchDoc(fixture: HlMatch, competition: Competition, gameweek: number) {
   const status = mapApiStatus(fixture.state.description)
   const { home, away } = parseScore(fixture.state.score.current)
 
   return {
+    competition: competition.id,
     apiFixtureId: fixture.id,
     season: String(fixture.league.season),
-    gameweek: parseRound(fixture.round),
+    gameweek,
     homeTeamId: String(fixture.homeTeam.id),
     awayTeamId: String(fixture.awayTeam.id),
     kickoffAt: Timestamp.fromDate(new Date(fixture.date)),
@@ -31,47 +34,69 @@ function fixtureToMatchDoc(fixture: HlMatch) {
 }
 
 /**
- * Full-season fixture list sync — run on the low-frequency housekeeping cadence, not every
- * tick. Takes an already-fetched fixture list (shared with syncTeams, which always runs in
- * the same breath — see sync.ts) rather than fetching its own copy of the same ~150-match
- * season list.
+ * Which fixtures of a competition are part of the game, and the gameweek each belongs to.
+ * Süper Lig: every fixture, gameweek = its round number. Champions League: league stage and
+ * knockouts only (see ucl.ts), gameweek = our own stage numbering.
  */
-export async function syncFixtures(fixtures: HlMatch[]): Promise<{ currentGameweek: number }> {
-  const batch = db.batch()
+export function planFixtures(
+  fixtures: HlMatch[],
+  competition: Competition,
+): { planned: PlannedFixture[]; stages: UclStage[] | null } {
+  if (competition.id === 'ucl') return planUclFixtures(fixtures)
+  return { planned: fixtures.map((fixture) => ({ fixture, gameweek: parseRound(fixture.round) })), stages: null }
+}
 
-  for (const fixture of fixtures) {
-    const ref = db.collection('matches').doc(String(fixture.id))
-    batch.set(ref, fixtureToMatchDoc(fixture), { merge: true })
+/**
+ * Full-season fixture list sync — run on the low-frequency housekeeping cadence, not every
+ * tick. Takes an already-planned fixture list (shared with syncTeams, which always runs in
+ * the same breath — see sync.ts) rather than fetching its own copy.
+ */
+export async function syncFixtures(
+  planned: PlannedFixture[],
+  stages: UclStage[] | null,
+  competition: Competition,
+): Promise<{ currentGameweek: number }> {
+  // A Firestore batch holds at most 500 writes.
+  for (let i = 0; i < planned.length; i += 400) {
+    const batch = db.batch()
+    for (const { fixture, gameweek } of planned.slice(i, i + 400)) {
+      const ref = db.collection('matches').doc(String(fixture.id))
+      batch.set(ref, fixtureToMatchDoc(fixture, competition, gameweek), { merge: true })
+    }
+    await batch.commit()
   }
-  await batch.commit()
 
-  const currentGameweek = inferCurrentGameweek(fixtures)
+  const currentGameweek = inferCurrentGameweek(planned)
   await db
     .collection('meta')
-    .doc('config')
+    .doc(competition.metaDocId)
     .set(
-      { season: config.season, currentGameweek, lastFixtureSyncAt: Timestamp.now(), updatedAt: Timestamp.now() },
+      {
+        season: config.season,
+        currentGameweek,
+        ...(stages ? { stages } : {}),
+        lastFixtureSyncAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      },
       { merge: true },
     )
 
   return { currentGameweek }
 }
 
-/** The "current" gameweek is the earliest round that isn't fully finished yet, falling back to the last round if the season is over. */
-function inferCurrentGameweek(fixtures: HlMatch[]): number {
-  const byRound = new Map<number, HlMatch[]>()
-  for (const fixture of fixtures) {
-    const round = parseRound(fixture.round)
-    const list = byRound.get(round) ?? []
-    list.push(fixture)
-    byRound.set(round, list)
+/** The "current" gameweek is the earliest one that isn't fully finished yet, falling back to the last if the season is over. */
+function inferCurrentGameweek(planned: PlannedFixture[]): number {
+  const byGameweek = new Map<number, PlannedFixture[]>()
+  for (const p of planned) {
+    const list = byGameweek.get(p.gameweek) ?? []
+    list.push(p)
+    byGameweek.set(p.gameweek, list)
   }
 
-  const rounds = [...byRound.keys()].sort((a, b) => a - b)
-  for (const round of rounds) {
-    const matches = byRound.get(round)!
-    const allFinished = matches.every((m) => mapApiStatus(m.state.description) === 'FINISHED')
-    if (!allFinished) return round
+  const gameweeks = [...byGameweek.keys()].sort((a, b) => a - b)
+  for (const gw of gameweeks) {
+    const allFinished = byGameweek.get(gw)!.every((p) => mapApiStatus(p.fixture.state.description) === 'FINISHED')
+    if (!allFinished) return gw
   }
-  return rounds.at(-1) ?? 1
+  return gameweeks.at(-1) ?? 1
 }

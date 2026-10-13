@@ -24,6 +24,18 @@ export const ZONE_BANDS: ZoneBand[] = [
   { from: 16, to: 18, color: 'var(--color-destructive)', label: 'Küme düşme' },
 ]
 
-export function zoneForPosition(position: number): ZoneBand | null {
-  return ZONE_BANDS.find((z) => position >= z.from && position <= z.to) ?? null
+export function zoneForPosition(position: number, bands: ZoneBand[] = ZONE_BANDS): ZoneBand | null {
+  return bands.find((z) => position >= z.from && position <= z.to) ?? null
+}
+
+// Champions League league stage (36 teams, one table): 1-8 go straight to the round of 16,
+// 9-24 play the knockout play-off, 25-36 are out.
+export const UCL_ZONE_BANDS: ZoneBand[] = [
+  { from: 1, to: 8, color: 'var(--color-primary)', label: 'Son 16' },
+  { from: 9, to: 24, color: '#f59e0b', label: 'Play-off' },
+  { from: 25, to: 36, color: 'var(--color-destructive)', label: 'Elendi' },
+]
+
+export function zoneBandsFor(competition: 'superlig' | 'ucl'): ZoneBand[] {
+  return competition === 'ucl' ? UCL_ZONE_BANDS : ZONE_BANDS
 }

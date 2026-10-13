@@ -78,8 +78,8 @@ export interface HlMatch {
   }
 }
 
-export function fetchLeagueFixtures(): Promise<HlMatch[]> {
-  return fetchAllPages<HlMatch>('/matches', { leagueId: config.leagueId, season: config.season })
+export function fetchLeagueFixtures(leagueId: number = config.leagueId): Promise<HlMatch[]> {
+  return fetchAllPages<HlMatch>('/matches', { leagueId, season: config.season })
 }
 
 /**
@@ -89,8 +89,8 @@ export function fetchLeagueFixtures(): Promise<HlMatch[]> {
  * includes every concurrently-live match in that league. `date` is the caller's
  * responsibility (Turkey-local "today"), formatted YYYY-MM-DD.
  */
-export function fetchMatchesForDate(dateYmd: string): Promise<HlMatch[]> {
-  return fetchAllPages<HlMatch>('/matches', { leagueId: config.leagueId, date: dateYmd })
+export function fetchMatchesForDate(dateYmd: string, leagueId: number = config.leagueId): Promise<HlMatch[]> {
+  return fetchAllPages<HlMatch>('/matches', { leagueId, date: dateYmd })
 }
 
 // Confirmed against a real response (worker/AGENTS.md §4) — note the flat scoredGoals/
@@ -105,9 +105,9 @@ export interface HlStandingRow {
   form?: string
 }
 
-export async function fetchStandings(): Promise<HlStandingRow[]> {
+export async function fetchStandings(leagueId: number = config.leagueId): Promise<HlStandingRow[]> {
   const response = await call<{ groups: Array<{ standings: HlStandingRow[] }> }>('/standings', {
-    leagueId: config.leagueId,
+    leagueId,
     season: config.season,
   })
   return response.groups?.[0]?.standings ?? []

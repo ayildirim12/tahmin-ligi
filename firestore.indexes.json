@@ -17,6 +17,15 @@
       ]
     },
     {
+      "collectionGroup": "matches",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "competition", "order": "ASCENDING" },
+        { "fieldPath": "gameweek", "order": "ASCENDING" },
+        { "fieldPath": "kickoffAt", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "predictions",
       "queryScope": "COLLECTION_GROUP",
       "fields": [

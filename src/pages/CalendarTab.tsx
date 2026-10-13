@@ -5,7 +5,7 @@ import { MatchRowSkeleton } from '@/components/ui/skeletons/MatchRowSkeleton'
 import { TeamCrest } from '@/components/standings/TeamCrest'
 import { useActiveCommunity } from '@/contexts/ActiveCommunityContext'
 import { useAuth } from '@/contexts/AuthContext'
-import { useConfig } from '@/hooks/useConfig'
+import { gameweekLabel, useConfig } from '@/hooks/useConfig'
 import { useGameweekMatches } from '@/hooks/useGameweekMatches'
 import { useGameweekPredictions, predictionKey } from '@/hooks/useGameweekPredictions'
 import { useTeams } from '@/hooks/useTeams'
@@ -62,6 +62,7 @@ export function CalendarTab() {
             gameweek={activeGameweek}
             onChange={setGameweek}
             maxGameweek={config?.currentGameweek ?? activeGameweek}
+            label={gameweekLabel(config, activeGameweek)}
           />
         </div>
       )}

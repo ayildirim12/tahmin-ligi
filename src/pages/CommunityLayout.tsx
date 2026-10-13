@@ -1,4 +1,6 @@
 import { Outlet, useParams } from 'react-router-dom'
+import { CompetitionProvider, useCompetition } from '@/contexts/CompetitionContext'
+import { CompetitionSwitcher } from '@/components/layout/CompetitionSwitcher'
 import { ActiveCommunityProvider, useActiveCommunity } from '@/contexts/ActiveCommunityContext'
 import { AppShell } from '@/components/layout/AppShell'
 import { FullScreenSpinner } from '@/components/ui/Spinner'
@@ -6,6 +8,7 @@ import { NotFoundPage } from '@/pages/NotFoundPage'
 
 function CommunityLayoutInner() {
   const { communityId, community, membership, loading } = useActiveCommunity()
+  const { competition } = useCompetition()
 
   if (loading) return <FullScreenSpinner />
 
@@ -19,7 +22,9 @@ function CommunityLayoutInner() {
 
   return (
     <AppShell communityId={communityId} community={community} membership={membership}>
-      <Outlet />
+      <CompetitionSwitcher />
+      {/* Keyed so each tab's local state (selected gameweek) resets when the competition changes. */}
+      <Outlet key={competition} />
     </AppShell>
   )
 }
@@ -30,7 +35,9 @@ export function CommunityLayout() {
 
   return (
     <ActiveCommunityProvider communityId={communityId}>
-      <CommunityLayoutInner />
+      <CompetitionProvider>
+        <CommunityLayoutInner />
+      </CompetitionProvider>
     </ActiveCommunityProvider>
   )
 }

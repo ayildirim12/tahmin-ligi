@@ -1,17 +1,19 @@
 import { FormBadge } from './FormBadge'
 import { TeamCrest } from './TeamCrest'
-import { zoneForPosition } from '@/lib/standingsZones'
+import { zoneBandsFor, zoneForPosition } from '@/lib/standingsZones'
 import type { LiveInfo } from '@/lib/liveStandings'
-import type { StandingsRow, Team } from '@/shared/types'
+import type { CompetitionId, StandingsRow, Team } from '@/shared/types'
 
 export function StandingsTable({
   rows,
   teams,
   liveTeamIds,
+  competition = 'superlig',
 }: {
   rows: StandingsRow[]
   teams: Record<string, Team>
   liveTeamIds?: Map<string, LiveInfo>
+  competition?: CompetitionId
 }) {
   return (
     <div className="overflow-x-auto rounded-xl border border-border">
@@ -35,7 +37,7 @@ export function StandingsTable({
         </thead>
         <tbody>
           {rows.map((row) => {
-            const zone = zoneForPosition(row.position)
+            const zone = zoneForPosition(row.position, zoneBandsFor(competition))
             const team = teams[row.teamId]
             const live = liveTeamIds?.get(row.teamId)
             // Like Google: the score chip's background shows how the live match is going for this team.

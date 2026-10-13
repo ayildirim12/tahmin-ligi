@@ -4,6 +4,7 @@ const LOOKAHEAD_BUFFER_MINUTES = 2 // catch an imminent kickoff slightly early
 export interface LiveCandidate {
   kickoffAtMs: number
   status: string
+  competition: string
 }
 
 /** Is there any match currently inside (or about to enter) its live window? */
@@ -43,4 +44,22 @@ export function remainingLiveMinutesToday(candidates: LiveCandidate[], nowMs = D
     mergedEnd = Math.max(mergedEnd, iv.end)
   }
   return totalMs / 60_000
+}
+
+/**
+ * UTC calendar dates (YYYY-MM-DD) of the matches currently inside their live window. The
+ * scoreboard query is per league+date, so the date must be the kickoff's own — a late
+ * kickoff that runs past local midnight still belongs to the day it started.
+ */
+export function activeKickoffDates(candidates: LiveCandidate[], nowMs = Date.now()): string[] {
+  const bufferedNow = nowMs + LOOKAHEAD_BUFFER_MINUTES * 60_000
+  const dates = new Set<string>()
+  for (const c of candidates) {
+    if (c.status === 'FINISHED' || c.status === 'POSTPONED' || c.status === 'CANCELLED') continue
+    const windowEnd = c.kickoffAtMs + LIVE_WINDOW_MINUTES * 60_000
+    if (c.kickoffAtMs <= bufferedNow && nowMs < windowEnd) {
+      dates.add(new Date(c.kickoffAtMs).toISOString().slice(0, 10))
+    }
+  }
+  return [...dates]
 }
