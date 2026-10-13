@@ -13,8 +13,25 @@ async function get(path: string, params: Record<string, string | number>) {
   return JSON.parse(text)
 }
 
-const leagues = await get('/leagues', { leagueName: 'Champions League' })
-console.log('LEAGUES', JSON.stringify(leagues.data?.map((l: any) => ({ id: l.id, name: l.name, country: l.country?.name })), null, 1))
+const attempts: Array<Record<string, string | number>> = [
+  { leagueName: 'UEFA Champions League' },
+  { leagueName: 'Champions League' },
+  { leagueName: 'UEFA Champions League', season: 2026 },
+  { leagueName: 'Champions League', countryName: 'Europe' },
+  { leagueName: 'Champions League', countryName: 'World' },
+  { leagueName: 'Champions League', countryName: 'International' },
+]
+let leagues: any = { data: [] }
+for (const params of attempts) {
+  const res = await get('/leagues', params)
+  const list = res.data ?? res
+  console.log('TRY', JSON.stringify(params), '->', Array.isArray(list) ? list.length : JSON.stringify(res).slice(0, 200))
+  if (Array.isArray(list) && list.length) {
+    leagues = { data: list }
+    console.log('LEAGUES', JSON.stringify(list.map((l: any) => ({ id: l.id, name: l.name, country: l.country?.name, seasons: l.seasons?.map((x: any) => x.season) }))))
+    break
+  }
+}
 
 const ucl = leagues.data?.find((l: any) => /^uefa champions league$/i.test(l.name)) ?? leagues.data?.[0]
 if (!ucl) throw new Error('no league found')
