@@ -60,3 +60,5 @@ console.log('TEAMS', JSON.stringify([...new Map(matches.flatMap((m) => [m.homeTe
 const standings = await get('/standings', { leagueId: ucl.id, season })
 console.log('STANDINGS groups', standings.groups?.length, 'first group name', standings.groups?.[0]?.name, 'rows', standings.groups?.[0]?.standings?.length)
 console.log('STANDINGS SAMPLE', JSON.stringify(standings.groups?.[0]?.standings?.[0], null, 1), JSON.stringify(Object.keys(standings)))
+
+console.log('LEAGUE_STAGE_TEAMS', JSON.stringify(standings.groups?.[0]?.standings?.map((r: any) => [r.team.id, r.team.name])))
