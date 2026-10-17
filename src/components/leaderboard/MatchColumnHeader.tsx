@@ -41,6 +41,11 @@ export function MatchColumnHeader({
             {formatKickoff(match.kickoffAt).split(' ').slice(0, 2).join(' ')}
           </span>
         )}
+        {isLive && (
+          <span className="text-[10px] font-semibold leading-none text-red-500 tabular-nums">
+            {match.status === 'HT' ? 'İY' : `${match.elapsedMinutes ?? 0}'`}
+          </span>
+        )}
       </div>
     </th>
   )
