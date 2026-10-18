@@ -10,6 +10,7 @@ import { TeamCrest } from '@/components/standings/TeamCrest'
 import { computeCellState } from '@/lib/liveScoring'
 import { cn } from '@/lib/cn'
 import { formatKickoff, isLocked } from '@/lib/time'
+import { isPredictionBlocked } from '@/shared/blockedTeams'
 import type { Match, Team } from '@/shared/types'
 
 function MatchStatusBadge({ match }: { match: Match }) {
@@ -53,7 +54,8 @@ export function FixtureCard({
 }) {
   const { user } = useAuth()
   const { prediction, loading } = useMyPrediction(communityId, match.id)
-  const locked = isLocked(match.kickoffAt) || match.status !== 'SCHEDULED'
+  const blocked = isPredictionBlocked(match)
+  const locked = blocked || isLocked(match.kickoffAt) || match.status !== 'SCHEDULED'
 
   const [draft, setDraft] = useState<{ home: number | null; away: number | null }>({
     home: null,
@@ -90,7 +92,7 @@ export function FixtureCard({
         {locked && (
           <span className="flex items-center gap-1 font-medium text-muted-foreground">
             <Lock className="size-3" />
-            Kilitli
+            {blocked ? 'Tahmine kapalı' : 'Kilitli'}
           </span>
         )}
       </div>

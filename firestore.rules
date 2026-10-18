@@ -16,6 +16,22 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid));
     }
 
+    // Teams whose matches are closed to predictions for the rest of the season
+    // (league decision). Keep in sync with src/shared/blockedTeams.ts.
+    function blockedTeamIds() {
+      return ['3046513']; // Amed
+    }
+
+    // A prediction may be created/edited only before kickoff, and never for a
+    // match involving a blocked team. `.get(key, default)` keeps match docs
+    // without team ids (e.g. test fixtures) from raising an evaluation error.
+    function isPredictableMatch(matchId) {
+      let m = get(/databases/$(database)/documents/matches/$(matchId)).data;
+      return request.time < m.kickoffAt
+        && !(m.get('homeTeamId', '') in blockedTeamIds())
+        && !(m.get('awayTeamId', '') in blockedTeamIds());
+    }
+
     // ---- Read-only reference / worker-owned data ----
     // The GitHub Actions worker writes these via the Admin SDK, which bypasses
     // rules entirely — so `write: if false` here just means "no client may
@@ -243,7 +259,7 @@ service cloud.firestore {
             && request.resource.data.awayGoals >= 0 && request.resource.data.awayGoals <= 20
             && request.resource.data.locked == false
             && request.resource.data.points == null
-            && request.time < get(/databases/$(database)/documents/matches/$(request.resource.data.matchId)).data.kickoffAt;
+            && isPredictableMatch(request.resource.data.matchId);
 
           allow update: if isSignedIn()
             && request.auth.uid == memberUid
@@ -257,7 +273,7 @@ service cloud.firestore {
             && request.resource.data.homeGoals >= 0 && request.resource.data.homeGoals <= 20
             && request.resource.data.awayGoals is int
             && request.resource.data.awayGoals >= 0 && request.resource.data.awayGoals <= 20
-            && request.time < get(/databases/$(database)/documents/matches/$(resource.data.matchId)).data.kickoffAt;
+            && isPredictableMatch(resource.data.matchId);
 
           // Self-delete, no time restriction — used by the account-deletion
           // cascade. A user removing their own prediction (even a finalized,

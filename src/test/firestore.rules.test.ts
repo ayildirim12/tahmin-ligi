@@ -291,3 +291,42 @@ describe('community enumeration is blocked', () => {
     await assertSucceeds(member.firestore().collection('communities').doc(COMMUNITY_ID).get())
   })
 })
+
+describe('prediction writes', () => {
+  function newPrediction(uid: string) {
+    return {
+      uid,
+      communityId: COMMUNITY_ID,
+      matchId: MATCH_ID,
+      homeGoals: 1,
+      awayGoals: 0,
+      locked: false,
+      points: null,
+    }
+  }
+
+  async function setMatchTeams(homeTeamId: string, awayTeamId: string) {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.firestore().collection('matches').doc(MATCH_ID).update({ homeTeamId, awayTeamId })
+    })
+  }
+
+  it('a member can create and edit a prediction before kickoff', async () => {
+    await setMatchTeams('100', '200')
+    const member = testEnv.authenticatedContext(MEMBER_UID)
+    await assertSucceeds(predictionRef(MEMBER_UID)(member).set(newPrediction(MEMBER_UID)))
+    await assertSucceeds(predictionRef(MEMBER_UID)(member).update({ homeGoals: 3 }))
+  })
+
+  it('nobody can create a prediction for a match involving a blocked team', async () => {
+    await setMatchTeams('3046513', '200')
+    const member = testEnv.authenticatedContext(MEMBER_UID)
+    await assertFails(predictionRef(MEMBER_UID)(member).set(newPrediction(MEMBER_UID)))
+  })
+
+  it('an existing prediction cannot be edited once its match involves a blocked team', async () => {
+    await setMatchTeams('200', '3046513')
+    const owner = testEnv.authenticatedContext(OWNER_UID)
+    await assertFails(predictionRef(OWNER_UID)(owner).update({ homeGoals: 0 }))
+  })
+})

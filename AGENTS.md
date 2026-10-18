@@ -244,3 +244,10 @@ başlatın.
   DEĞİL, tek seferlik bir admin script'iyle anında uygulandı** (API key yerelde yoktu) —
   worker'ın kendisi bir sonraki gerçek çalıştırmasında zaten aynı override'ları yazacağı için
   idempotent, fark yaratmaz.
+- **Amed maçları tahmine kapalı (kullanıcı/lig kararı, 2026-10-18).** `firestore.rules`'taki
+  `blockedTeamIds()` (asıl engel) ve `src/shared/blockedTeams.ts` (sadece UI) Amed'in
+  (`3046513`) oynadığı maçlarda tahmin oluşturma/düzenlemeyi engeller — iki liste senkron
+  tutulmalı. Aynı kararla 8. hafta Amed maçındaki (`1348350714`) tüm tahminler tek seferlik
+  admin script'iyle "rakip 3 - Amed 0" yapıldı, puanları 0'landı ve üyelerin
+  `totalPoints`/`winsCount` değerlerinden düşüldü (maç zaten `pointsFinalized`, worker
+  tekrar hesaplamaz).
