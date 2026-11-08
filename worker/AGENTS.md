@@ -279,3 +279,18 @@ FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 GOOGLE_CLOUD_PROJECT=demo-tahmin-ligi npm
 (kilit bakımı, puan kesinleştirme) test etmek için `requireHighlightlyKey()` çağıran fonksiyonları
 geçici olarak atlaman gerekebilir, ya da sahte bir env değişkeni set edip gerçek dış istek
 atmayacak bir test senaryosu kurgula.
+
+### Kota tükenmesi (2026-11-08) — run'lar arası tempo + stale maç kurtarma
+
+4 maçlı bir Pazar günü (13:30–21:00 TR, ~9,5 saat canlı pencere) "her 5dk run'da en az 1 poll"
+tabanı ~115 istek gerektirdi; 100/gün limiti son maçın 71. dakikasında doldu, sonraki her run
+429 ile çöktü (failure maili) ve maç Firestore'da LIVE olarak takılı kaldı. Düzeltme:
+- **Tempo artık run'lar ARASI**: `syncState/highlightlyQuota.lastLivePollAt` saklanıyor; aralık
+  (`computeIntervalSeconds`, tavan 30dk) 5dk'yı aşabiliyor, sıradaki poll bu run'ın bütçesine
+  sığmıyorsa bir sonraki run'a bırakılıyor. Aynı gün simülasyonda ~89 istek, ort. ~7dk aralık.
+- **İstek ÖNCE rezerve ediliyor** (`reserveApiRequest`): bütçe bittiyse HTTP isteği hiç atılmıyor
+  (`QuotaExhaustedError`). Gerçek 429 gelirse sayaç 100'e sabitleniyor. Kota hatası run'ı
+  düşürmüyor (`quotaSafe`) — lock/finalize yine çalışıyor, exit 0.
+- **Stale maç kurtarma** (`recoverStaleMatches`): canlı penceresi (130dk) geçmiş ama hâlâ
+  SCHEDULED/LIVE/HT olan son 36 saatteki maçlar, o günün tarihiyle yeniden çekiliyor (en fazla
+  2 saatte bir, kota varken). Kota gece sıfırlanınca takılı kalan maç kendiliğinden düzelir.

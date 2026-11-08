@@ -1,4 +1,4 @@
-const LIVE_WINDOW_MINUTES = 130 // kickoff → full-time + stoppage/ET buffer
+export const LIVE_WINDOW_MINUTES = 130 // kickoff → full-time + stoppage/ET buffer
 const LOOKAHEAD_BUFFER_MINUTES = 2 // catch an imminent kickoff slightly early
 
 export interface LiveCandidate {

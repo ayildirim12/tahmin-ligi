@@ -1,5 +1,5 @@
 import { config, requireHighlightlyKey } from './config.ts'
-import { recordApiRequest } from './quota.ts'
+import { markQuotaExhausted, QuotaExhaustedError, reserveApiRequest } from './quota.ts'
 
 // Direct (non-RapidAPI) Highlightly access — only needs the API key header.
 // https://highlightly.net/football-api/documentation/
@@ -14,17 +14,20 @@ async function call<T>(path: string, params: Record<string, string | number> = {
   const url = new URL(`${BASE_URL}${path}`)
   for (const [key, value] of Object.entries(params)) url.searchParams.set(key, String(value))
 
+  // Reserved here (the one place every Highlightly call funnels through — including each
+  // page of a paginated fetch) so the daily counter reflects EVERY real request. Reserving
+  // BEFORE the fetch means a spent budget stops us from calling at all (no 429 spam).
+  await reserveApiRequest()
+
   const res = await fetch(url, {
     headers: { 'x-rapidapi-key': requireHighlightlyKey() },
   })
-  // Recorded here (the one place every Highlightly call funnels through — including each
-  // page of a paginated fetch) so the daily quota counter reflects EVERY real request, not
-  // just the live-poll loop's own calls. Previously only live.ts recorded usage, so the
-  // adaptive live-poll budget was computed blind to what housekeeping (teams/fixtures/
-  // standings) had already spent that day, risking a real Highlightly-side overshoot past
-  // the 100/day free limit on a heavy match day.
-  await recordApiRequest()
 
+  if (res.status === 429) {
+    // Our counter and Highlightly's can drift (their reset time isn't documented) — trust them.
+    await markQuotaExhausted()
+    throw new QuotaExhaustedError(`Highlightly ${path} returned 429: ${await res.text()}`)
+  }
   if (!res.ok) {
     throw new Error(`Highlightly ${path} failed: ${res.status} ${await res.text()}`)
   }

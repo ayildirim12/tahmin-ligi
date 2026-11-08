@@ -4,9 +4,17 @@ import { syncFixtures } from './fixtures.ts'
 import { finalizeFinishedMatches } from './finalize.ts'
 import { fetchLeagueFixtures } from './highlightlyApi.ts'
 import { runLockMaintenance } from './lock.ts'
-import { hasImminentOrLiveMatch, remainingLiveMinutesToday } from './liveWindow.ts'
-import { pollLiveScores } from './live.ts'
-import { computeIntervalSeconds, getRequestsUsedToday } from './quota.ts'
+import { hasImminentOrLiveMatch, LIVE_WINDOW_MINUTES, remainingLiveMinutesToday } from './liveWindow.ts'
+import { pollLiveScores, turkeyYmd } from './live.ts'
+import {
+  computeIntervalSeconds,
+  DAILY_BUDGET,
+  getQuotaState,
+  LIVE_BUDGET,
+  markLivePoll,
+  markStaleCheck,
+  QuotaExhaustedError,
+} from './quota.ts'
 import { syncStandings } from './standings.ts'
 import { syncTeams } from './teams.ts'
 
@@ -16,6 +24,10 @@ const FIXTURE_SYNC_INTERVAL_MS = 24 * 60 * 60_000
 // resync (see the live loop below) — this only still matters if a finish is somehow never
 // observed live (e.g. a cron outage swallowed that match's whole live window).
 const STANDINGS_SYNC_INTERVAL_MS = 8 * 60 * 60_000
+// A match whose live window ended while it was still SCHEDULED/LIVE/HT in Firestore (quota ran
+// out mid-match, cron outage...) is re-fetched by date at most this often, for this long.
+const STALE_CHECK_INTERVAL_MS = 2 * 60 * 60_000
+const STALE_LOOKBACK_MS = 36 * 60 * 60_000
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -59,13 +71,65 @@ async function getLiveCandidates() {
     }))
 }
 
+/** Runs an API-consuming step; a spent quota just skips it instead of failing the whole run. */
+async function quotaSafe(label: string, step: () => Promise<void>): Promise<void> {
+  try {
+    await step()
+  } catch (err) {
+    if (!(err instanceof QuotaExhaustedError)) throw err
+    console.warn(`[sync] ${label} skipped — ${err.message}`)
+  }
+}
+
+async function handleNewlyFinished(matchIds: string[]): Promise<void> {
+  if (matchIds.length === 0) return
+  console.log(`[sync] finalizing newly-finished matches: ${matchIds.join(', ')}`)
+  await finalizeFinishedMatches(matchIds)
+  await runLockMaintenance()
+  // Standings otherwise only refresh on the 8-hour housekeeping timer. Matches finishing in
+  // the same poll are batched, so this is one request per distinct finishing moment.
+  console.log('[sync] refreshing standings after match finish')
+  await quotaSafe('standings refresh', syncStandings)
+}
+
+/**
+ * Matches whose live window has passed but which never got a FINISHED status (typically: the
+ * daily quota ran out mid-match). Without this they'd sit as "LIVE" until the next 24h fixture
+ * sync. Re-fetches each affected Turkey-local date once per STALE_CHECK_INTERVAL_MS.
+ */
+async function recoverStaleMatches(): Promise<void> {
+  const now = Date.now()
+  const snap = await db
+    .collection('matches')
+    .where('kickoffAt', '>', Timestamp.fromMillis(now - STALE_LOOKBACK_MS))
+    .where('kickoffAt', '<', Timestamp.fromMillis(now - LIVE_WINDOW_MINUTES * 60_000))
+    .get()
+  const stale = snap.docs.filter((d) => ['SCHEDULED', 'LIVE', 'HT'].includes(d.data().status))
+  if (stale.length === 0) return
+
+  const { lastStaleCheckAtMs, requestsUsedToday } = await getQuotaState()
+  if (requestsUsedToday >= DAILY_BUDGET) return // retry once the quota resets
+  if (now - lastStaleCheckAtMs < STALE_CHECK_INTERVAL_MS) return
+  await markStaleCheck()
+
+  const dates = [...new Set(stale.map((d) => turkeyYmd(d.data().kickoffAt.toMillis())))]
+  console.log(`[sync] re-fetching ${stale.length} stale match(es) for ${dates.join(', ')}`)
+  const finished: string[] = []
+  for (const date of dates) {
+    const { newlyFinishedMatchIds } = await pollLiveScores(date)
+    finished.push(...newlyFinishedMatchIds)
+  }
+  await handleNewlyFinished(finished)
+}
+
 async function main() {
   console.log(`[sync] run started ${new Date().toISOString()}`)
   const startedAt = Date.now()
 
-  await runDueHousekeeping()
+  await quotaSafe('housekeeping', runDueHousekeeping)
   await runLockMaintenance()
   await finalizeFinishedMatches()
+  await quotaSafe('stale match recovery', recoverStaleMatches)
 
   let candidates = await getLiveCandidates()
 
@@ -75,39 +139,39 @@ async function main() {
   }
 
   console.log('[sync] live window active — entering adaptive poll loop.')
-  while (Date.now() - startedAt < RUN_BUDGET_MS) {
-    const requestsUsedToday = await getRequestsUsedToday()
-    const remainingMinutes = remainingLiveMinutesToday(candidates)
-    const intervalSeconds = computeIntervalSeconds(remainingMinutes, requestsUsedToday)
+  try {
+    while (Date.now() - startedAt < RUN_BUDGET_MS) {
+      // Polls are paced ACROSS runs (lastLivePollAt is persisted): with a fixed one-poll-per-run
+      // floor, a 4-match day (~9-10 live hours) needs ~115 polls and blew the 100/day limit.
+      const { requestsUsedToday, lastLivePollAtMs } = await getQuotaState()
+      if (requestsUsedToday >= LIVE_BUDGET) {
+        console.log(`[sync] live budget spent (${requestsUsedToday} used today) — no more live polls today.`)
+        break
+      }
+      const intervalSeconds = computeIntervalSeconds(remainingLiveMinutesToday(candidates), requestsUsedToday)
+      const waitMs = lastLivePollAtMs + intervalSeconds * 1000 - Date.now()
+      if (waitMs > 0) {
+        if (Date.now() + waitMs - startedAt > RUN_BUDGET_MS) {
+          console.log(`[sync] next poll due in ${Math.round(waitMs / 1000)}s (interval ${intervalSeconds}s, ${requestsUsedToday} used today) — leaving it to a later run.`)
+          break
+        }
+        console.log(`[sync] sleeping ${Math.round(waitMs / 1000)}s before next poll (interval ${intervalSeconds}s, ${requestsUsedToday} used today)`)
+        await sleep(waitMs)
+      }
 
-    const { newlyFinishedMatchIds } = await pollLiveScores()
-    if (newlyFinishedMatchIds.length > 0) {
-      console.log(`[sync] finalizing newly-finished matches: ${newlyFinishedMatchIds.join(', ')}`)
-      await finalizeFinishedMatches(newlyFinishedMatchIds)
-      await runLockMaintenance()
-      // Standings (O/G/B/M/AV/P/Son5) otherwise only refresh on the 2-hour
-      // housekeeping timer — a match finishing shouldn't have to wait up to
-      // that long to move a team's position/points. Matches that finish
-      // within the same poll tick are already batched into one
-      // newlyFinishedMatchIds list, so this is naturally one extra request
-      // per *distinct finishing moment* during a live window, not one per
-      // match — cheap relative to the live-poll budget.
-      console.log('[sync] refreshing standings after match finish')
-      await syncStandings()
+      await markLivePoll()
+      const { newlyFinishedMatchIds } = await pollLiveScores()
+      await handleNewlyFinished(newlyFinishedMatchIds)
+
+      candidates = await getLiveCandidates()
+      if (!hasImminentOrLiveMatch(candidates)) {
+        console.log('[sync] all matches settled — exiting loop early.')
+        break
+      }
     }
-
-    candidates = await getLiveCandidates()
-    if (!hasImminentOrLiveMatch(candidates)) {
-      console.log('[sync] all matches settled — exiting loop early.')
-      break
-    }
-
-    console.log(`[sync] sleeping ${intervalSeconds}s before next poll (requests used today: ${requestsUsedToday})`)
-    // Never sleep past the run budget: the job has a hard 5-minute timeout, and an
-    // over-long final sleep got the run cancelled before its end-of-run cleanup.
-    const msLeft = RUN_BUDGET_MS - (Date.now() - startedAt)
-    if (msLeft <= 0) break
-    await sleep(Math.min(intervalSeconds * 1000, msLeft))
+  } catch (err) {
+    if (!(err instanceof QuotaExhaustedError)) throw err
+    console.warn(`[sync] live polling stopped — ${err.message}`)
   }
 
   await runLockMaintenance()

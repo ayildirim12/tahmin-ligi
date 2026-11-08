@@ -6,20 +6,22 @@ import { mapApiStatus, parseScore } from './statusMap.ts'
 // Turkey has stayed on UTC+3 year-round since 2016 (no DST) — a fixed offset is safe here.
 const TURKEY_UTC_OFFSET_HOURS = 3
 
-function turkeyTodayYmd(): string {
-  const now = new Date(Date.now() + TURKEY_UTC_OFFSET_HOURS * 60 * 60_000)
-  return now.toISOString().slice(0, 10)
+export function turkeyYmd(ms: number): string {
+  return new Date(ms + TURKEY_UTC_OFFSET_HOURS * 60 * 60_000).toISOString().slice(0, 10)
 }
 
 /**
  * Highlightly has no global "live=all" endpoint (unlike API-Football) — one call per
  * league+date instead. Since we only ever care about Süper Lig, this is still exactly
  * one request per poll and still covers every concurrently-live Süper Lig match at once
- * (today's full match list, filtered to LIVE/HT here). Returns the ids of any match that
+ * (today's full match list, filtered to LIVE/HT here). `dateYmd` is overridable so stale
+ * matches from an earlier day (see recoverStaleMatches in sync.ts) can be re-fetched too. Returns the ids of any match that
  * just transitioned to FINISHED this poll, so the caller can finalize points immediately.
  */
-export async function pollLiveScores(): Promise<{ newlyFinishedMatchIds: string[] }> {
-  const todaysMatches = await fetchMatchesForDate(turkeyTodayYmd())
+export async function pollLiveScores(
+  dateYmd = turkeyYmd(Date.now()),
+): Promise<{ newlyFinishedMatchIds: string[] }> {
+  const todaysMatches = await fetchMatchesForDate(dateYmd)
 
   const batch = db.batch()
   const newlyFinished: string[] = []
